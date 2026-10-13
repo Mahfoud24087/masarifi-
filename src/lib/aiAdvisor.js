@@ -137,34 +137,36 @@ export function generateFinancialInsight({
   // 3. WHO CREATED THE APP / DEVELOPER / VERSION (Targeted response)
   // =========================================================================
   const isAboutCreator =
-    q.includes('من صنع') || q.includes('من طور') || q.includes('من هو المطور') || q.includes('من صمم') ||
-    q.includes('من أنشأ') || q.includes('who created') || q.includes('who made') || q.includes('who built') ||
-    q.includes('who developed') || q.includes('who is the developer') || q.includes('qui a créé') ||
-    q.includes('qui a développé') || q.includes('qui est le développeur');
+    /من (صنع|طور|صمم|أنشأ|هو المطور|المطور|عمل|برمج)/.test(q) ||
+    /who (created|made|built|developed|designed|coded)/.test(q) ||
+    /who is the (developer|creator|maker|author)/.test(q) ||
+    /qui (a créé|a fait|a développé|a conçu|creer|créé|fait|developpe|est le développeur|est le créateur|a fabriqué)/.test(q) ||
+    /(créateur|developpeur|createur|developer|المطور)/.test(q);
 
   if (isAboutCreator) {
     if (targetLang === 'en') {
-      return `👨‍💻 **Masarifi** was developed by **Mahfoud** in 2026 to help people easily manage their money, track expenses in Mauritanian Ouguiya (MRU), and achieve financial control.`;
+      return `👨‍💻 **Masarifi** was created by **Mahfoud** in 2026 to help manage personal finances and daily expenses in Mauritanian Ouguiya (MRU).`;
     }
     if (targetLang === 'fr') {
-      return `👨‍💻 **Masarifi** a été développé par **Mahfoud** en 2026 pour aider la communauté à maîtriser ses dépenses quotidiennes en Ouguiya (MRU) et à épargner plus efficacement.`;
+      return `👨‍💻 **Masarifi** a été développé par **Mahfoud** en 2026 pour vous aider à suivre vos dépenses quotidiennes en Ouguiya (MRU) et maîtriser votre budget.`;
     }
-    return `👨‍💻 تم تطوير تطبيق **مصاريفي** بواسطة **محفوظ (Mahfoud)** في عام 2026 لمساعدة المجتمع على إدارة المصاريف اليومية بالأوقية والتحكم في الميزانية بسهولة.`;
+    return `👨‍💻 تم تطوير تطبيق **مصاريفي** بواسطة **محفوظ (Mahfoud)** في عام 2026 لمساعدتك في تتبع مصاريفك اليومية بالأوقية والتحكم في ميزانيتك.`;
   }
 
   // What is this app / Version / Launch info
   const isAboutAppOrVersion =
-    q.includes('ما هو هذا التطبيق') || q.includes('ما هو تطبيق') || q.includes('ما فائدة التطبيق') ||
-    q.includes('الاصدار') || q.includes('الإصدار') || q.includes('نسخة') ||
-    q.includes('what is this app') || q.includes('what is masarifi') || q.includes('version') ||
-    q.includes('c\'est quoi cette application') || q.includes('quelle est la version');
+    /(ما هو|ما فائدة|ماذا يفعل|ما هذا التطبيق|ما التطبيق)/.test(q) ||
+    /(الإصدار|الاصدار|نسخة|رقم الاصدار|رقم الإصدار)/.test(q) ||
+    /what is (this app|masarifi)|what does (it|this app) do/i.test(q) ||
+    /version|release/i.test(q) ||
+    /c'est quoi (cette application|cette app|masarifi)|a quoi sert|quelle est la version/i.test(q);
 
   if (isAboutAppOrVersion) {
     if (targetLang === 'en') {
-      return `📱 **Masarifi (v2.1.0 AI Edition)** is an intelligent personal finance and expense-tracking Progressive Web App with cloud database sync and real-time AI coaching.`;
+      return `📱 **Masarifi (v2.1.0 AI Edition)** is a smart personal finance and expense-tracking web application with real-time analytics and financial guidance.`;
     }
     if (targetLang === 'fr') {
-      return `📱 **Masarifi (v2.1.0 Édition IA)** est une application web progressive de gestion financière personnelle, synchronisée dans le cloud et dotée d'un conseiller IA intelligent.`;
+      return `📱 **Masarifi (v2.1.0 Édition IA)** est une application web intelligente de gestion des dépenses et finances personnelles avec suivi en temps réel.`;
     }
     return `📱 **مصاريفي (الإصدار 2.1.0 الذكي)** هو تطبيق ويب متطور لتتبع المصاريف والدخل وإدارة الميزانيات بدقة مع مستشار ذكاء اصطناعي فوري ومزامنة سحابية.`;
   }
