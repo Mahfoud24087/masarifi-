@@ -3,7 +3,8 @@ import { useMasarifi } from '../context/MasarifiContext';
 import CategoryBadge from '../components/CategoryBadge';
 import EmptyState from '../components/EmptyState';
 import { EXPENSE_CATEGORIES, getCategoryById } from '../models/categories';
-import { ChevronDown, ChevronLeft, ChevronRight, Search, X, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, X, TrendingUp, TrendingDown, Minus, RefreshCw, Sparkles } from 'lucide-react';
+import AIAdvisorModal from '../components/AIAdvisorModal';
 
 function StatPill({ label, value, color = 'text-slate-700', isDark }) {
   return (
@@ -53,6 +54,7 @@ export default function DashboardScreen() {
   const [showFilter, setShowFilter] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch]   = useState(false);
+  const [showAIAdvisor, setShowAIAdvisor] = useState(false);
 
   const months = t('months');
   const monthLabel = Array.isArray(months) && months[viewMonth.month]
@@ -130,6 +132,15 @@ export default function DashboardScreen() {
             <h1 className={`text-xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{firstName} 👋</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAIAdvisor(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full font-bold text-xs text-white shadow-md shadow-emerald-500/20 transition-all active:scale-95 hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+              id="masarifi-ai-advisor-btn"
+            >
+              <Sparkles size={14} className="animate-spin-slow" />
+              <span>{lang === 'ar' ? 'مستشارك' : lang === 'fr' ? 'IA' : 'AI Advisor'}</span>
+            </button>
             <button onClick={() => setShowSearch(!showSearch)}
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-white text-slate-600 border border-slate-100 shadow-sm'}`}
               id="masarifi-search-btn">
@@ -282,6 +293,9 @@ export default function DashboardScreen() {
         )}
         <div className="h-4" />
       </div>
+
+      {/* AI Advisor Modal */}
+      <AIAdvisorModal isOpen={showAIAdvisor} onClose={() => setShowAIAdvisor(false)} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare } from 'lucide-react';
+import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare, Bot, Sparkles } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import InstallPrompt from '../components/InstallPrompt';
 
@@ -28,6 +28,13 @@ export default function LandingScreen() {
   const [showLangPicker, setShowLangPicker] = useState(false);
 
   const features = [
+    {
+      icon: Sparkles,
+      title: lang === 'ar' ? 'مستشار مالي ذكي بالذكاء الاصطناعي' : lang === 'fr' ? 'Conseiller Financier IA' : 'AI Financial Advisor',
+      desc: lang === 'ar' ? 'يحلل مصاريفك ويعطيك خطة رقمية دقيقة لتوفير أموالك' : lang === 'fr' ? 'Analyse vos dépenses et vous donne des conseils concrets pour économiser' : 'Analyzes your spending and suggests personalized ways to save',
+      color: 'text-amber-500',
+      bg: 'bg-amber-50',
+    },
     { icon: TrendingDown, title: t('landing.feature1Title'), desc: t('landing.feature1Desc'), color: 'text-emerald-500', bg: 'bg-emerald-50' },
     { icon: BarChart2,    title: t('landing.feature2Title'), desc: t('landing.feature2Desc'), color: 'text-blue-500',    bg: 'bg-blue-50'    },
     { icon: Shield,       title: t('landing.feature3Title'), desc: t('landing.feature3Desc'), color: 'text-violet-500', bg: 'bg-violet-50'  },
