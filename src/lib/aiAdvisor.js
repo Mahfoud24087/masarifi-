@@ -1,25 +1,54 @@
 /**
- * Advanced Multi-language Financial AI Assistant for Masarifi
- * Features:
- * - Detects language dynamically (Arabic, French, English) regardless of interface language
- * - Fully knowledgeable about Masarifi: Creator (Mahfoud), purpose, launch date (2026), version (2.1.0 AI Edition), vision
- * - Deep financial statistics & minute-by-minute expense minimization calculation
- * - Dynamic category queries (Food, Transport, Bills, Health, Entertainment, Education, Shopping, Salary, etc.)
- * - Budget checks, savings forecasts, daily limits, and smart tips
- * - Interactive conversation memory & progressive learning
+ * Conversational Natural Financial AI for Masarifi
+ *
+ * Solves:
+ * 1. Language switching: If user asks in Arabic "تكلم بالانجليزية", it replies in English.
+ * 2. Precision & Conciseness: Answers ONLY what was asked without dumping huge blocks of text.
+ * 3. Specific Intent Understanding: Distinguishes greetings, language requests, creator questions,
+ *    specific category amounts, general advice, etc.
+ * 4. Contextual Memory: Tracks requested language across the conversation.
  */
 
-function detectLanguage(text, defaultLang = 'ar') {
-  if (!text) return defaultLang;
-  // Arabic detection
+// Detect if user is asking the AI to switch language
+function checkLanguageSwitchRequest(q) {
+  // English request
+  if (
+    q.includes('english') || q.includes('بالانجليزية') || q.includes('بالانجليزي') ||
+    q.includes('بالإنجليزي') || q.includes('بالإنكليزي') || q.includes('en anglais') ||
+    q.includes('speak english') || q.includes('talk in english') || q.includes('can you speak english')
+  ) {
+    return 'en';
+  }
+  // French request
+  if (
+    q.includes('francais') || q.includes('français') || q.includes('بالفرنسية') ||
+    q.includes('بالفرنسي') || q.includes('en français') || q.includes('parle francais') ||
+    q.includes('speak french') || q.includes('talk in french')
+  ) {
+    return 'fr';
+  }
+  // Arabic request
+  if (
+    q.includes('arabic') || q.includes('بالعربية') || q.includes('بالعربي') ||
+    q.includes('en arabe') || q.includes('parle arabe') || q.includes('speak arabic')
+  ) {
+    return 'ar';
+  }
+  return null;
+}
+
+// Infer current language of the text itself
+function inferTextLanguage(text, activeLanguage = 'ar') {
+  if (!text) return activeLanguage;
   if (/[\u0600-\u06FF]/.test(text)) return 'ar';
-  // French detection keywords
-  const frKeywords = /\b(qui|quoi|pourquoi|comment|quand|version|argent|dépense|dépenses|combien|bonjour|salut|merci|créateur|créé|développeur|nourriture|transport|facture|économiser|solde|revenu|salaire)\b/i;
-  if (frKeywords.test(text)) return 'fr';
-  // English detection keywords
-  const enKeywords = /\b(who|what|why|how|when|version|money|expense|expenses|how much|hello|hi|thanks|creator|created|developer|food|transport|bills|save|balance|income|salary)\b/i;
-  if (enKeywords.test(text)) return 'en';
-  return defaultLang;
+  
+  const frWords = /\b(bonjour|salut|oui|non|merci|combien|pourquoi|comment|qui|dépense|dépenses|argent|nourriture|repas|transport|facture|économiser|solde|est-ce|j'ai|mon|ma|mes)\b/i;
+  if (frWords.test(text)) return 'fr';
+  
+  const enWords = /\b(hello|hi|yes|no|thanks|thank you|how much|why|how|who|what|where|expense|expenses|money|food|bills|save|balance|can you|did i|my)\b/i;
+  if (enWords.test(text)) return 'en';
+  
+  return activeLanguage;
 }
 
 export function generateFinancialInsight({
@@ -34,271 +63,219 @@ export function generateFinancialInsight({
   conversationHistory = [],
   t = (k) => k,
 }) {
-  const rawQ = (prompt || '').trim();
-  const q = rawQ.toLowerCase();
-  const detectedLang = detectLanguage(rawQ, lang);
-  const userName = user?.name || (detectedLang === 'ar' ? 'صديقي' : detectedLang === 'fr' ? 'cher ami' : 'friend');
+  const raw = (prompt || '').trim();
+  const q = raw.toLowerCase();
 
-  // Breakdown by category
+  // Check if conversation previously established a language override
+  let preferredLang = null;
+  for (let i = conversationHistory.length - 1; i >= 0; i--) {
+    const sw = checkLanguageSwitchRequest(conversationHistory[i].text.toLowerCase());
+    if (sw) {
+      preferredLang = sw;
+      break;
+    }
+  }
+
+  // Current turn switch request takes top priority
+  const currentSwitch = checkLanguageSwitchRequest(q);
+  const targetLang = currentSwitch || preferredLang || inferTextLanguage(raw, lang);
+
+  const userName = user?.name || (targetLang === 'ar' ? 'صديقي' : targetLang === 'fr' ? 'cher ami' : 'friend');
+  const cur = targetLang === 'ar' ? 'أوقية' : 'MRU';
+  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString();
+
+  // Category totals
   const categoryTotals = {};
-  const expenseList = expenses.filter((e) => (e.type || 'expense') === 'expense');
-  const incomeList = expenses.filter((e) => e.type === 'income');
+  expenses
+    .filter((e) => (e.type || 'expense') === 'expense')
+    .forEach((e) => {
+      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + (Number(e.amount) || 0);
+    });
 
-  expenseList.forEach((e) => {
-    categoryTotals[e.category] = (categoryTotals[e.category] || 0) + (Number(e.amount) || 0);
-  });
+  const sortedCats = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+  const topCat = sortedCats[0] || null;
 
-  const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
-  const topCategory = sortedCategories[0] || null;
-
-  // Time metrics
   const now = new Date();
   const daysPassed = Math.max(1, now.getDate());
-  const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const remainingDays = Math.max(1, totalDaysInMonth - daysPassed);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const remainingDays = Math.max(1, daysInMonth - daysPassed);
   const dailyAverage = totalExpenses / daysPassed;
-  const projectedMonthly = dailyAverage * totalDaysInMonth;
-  const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
-
-  // Formatting helpers
-  const fmt = (num) => Math.round(num || 0).toLocaleString();
-  const cur = detectedLang === 'ar' ? 'أوقية' : 'MRU';
-
-  // Learning factor: count previous user messages in session
-  const interactionCount = (conversationHistory || []).filter((m) => m.sender === 'user').length;
-  const learnedBonus = interactionCount > 2 
-    ? (detectedLang === 'ar' 
-        ? `\n\n🧠 *بناءً على أسئلتك المتكررة في هذه الجلسة، لاحظت أنك تهتم بضبط الميزانية بدقة. سأقدم لك أرقاماً أكثر تفصيلاً دائماً.*` 
-        : detectedLang === 'fr'
-        ? `\n\n🧠 *En observant vos questions, j'affine mes recommandations pour vos objectifs financiers.*`
-        : `\n\n🧠 *Based on our ongoing conversation, I am personalizing these financial calculations directly to your goals.*`)
-    : '';
 
   // =========================================================================
-  // 1. APP IDENTITY, CREATOR, VERSION, PURPOSE & STORY
+  // 1. DIRECT LANGUAGE SWITCH CONFIRMATION
   // =========================================================================
-  const isAboutAppOrCreator = 
-    q.includes('من صنع') || q.includes('من طور') || q.includes('من انت') || q.includes('من أنت') || 
-    q.includes('من صمم') || q.includes('من أنشأ') || q.includes('ما هو التطبيق') || q.includes('ما هذا') ||
-    q.includes('ماهو') || q.includes('متى') || q.includes('لماذا') || q.includes('الاصدار') || q.includes('الإصدار') ||
-    q.includes('version') || q.includes('who created') || q.includes('who made') || q.includes('who developed') ||
-    q.includes('who are you') || q.includes('what is this') || q.includes('why was') || q.includes('qui a créé') ||
-    q.includes('qui t\'a') || q.includes('qui es-tu') || q.includes('c\'est quoi') || q.includes('pourquoi');
-
-  if (isAboutAppOrCreator) {
-    if (detectedLang === 'ar') {
-      return `✨ **معلومات عن تطبيق مصاريفي (Masarifi):**\n\n` +
-        `👨‍💻 **المطوّر والمؤسس:** طوّره **محفوظ (Mahfoud)** بكل فخر لخدمة المجتمع الموريتاني والعالم العربي.\n` +
-        `🎯 **الهدف والرؤية:** تم ابتكار مصاريفي بهدف تمكين كل شخص من التحكم الكامل في أمواله، التخلص من الديون والمصاريف العشوائية، وبناء عادات مالية ذكية تناسب الواقع المحلي بالعملة الوطنية (الأوقية).\n` +
-        `📅 **تاريخ الإطلاق:** 2026.\n` +
-        `🚀 **الإصدار:** **2.1.0 (النسخة الذكية بالذكاء الاصطناعي PWA)**.\n` +
-        `🔒 **الأمان:** بياناتك مشفرة ومحفوظة سحابياً عبر قاعدة بيانات Supabase المتطورة مع دعم العمل بدون إنترنت.\n\n` +
-        `أنا هنا لمساعدتك دائماً، اسألني عن أي تفاصيل مالية! 💚${learnedBonus}`;
+  if (currentSwitch) {
+    if (currentSwitch === 'en') {
+      return `Yes, absolutely! I can speak English with you now. What would you like to know about your expenses or finances? 😊`;
     }
-
-    if (detectedLang === 'fr') {
-      return `✨ **À propos de l'application Masarifi :**\n\n` +
-        `👨‍💻 **Créateur & Développeur :** Créé avec passion par **Mahfoud** pour aider la communauté à maîtriser ses finances personnelles.\n` +
-        `🎯 **Mission & Objectif :** Aider chacun à suivre facilement ses revenus et dépenses, éviter les gaspillages et planifier ses économies en Ouguiya (MRU) avec l'aide de l'IA.\n` +
-        `📅 **Année de lancement :** 2026.\n` +
-        `🚀 **Version actuelle :** **2.1.0 (Édition IA & PWA Cloud)**.\n` +
-        `🔒 **Sécurité :** Vos données sont synchronisées en toute sécurité via Supabase avec fonctionnement hors ligne.\n\n` +
-        `N'hésitez pas à me poser vos questions sur vos finances ! 💚${learnedBonus}`;
+    if (currentSwitch === 'fr') {
+      return `Oui, bien sûr ! Je peux désormais échanger avec vous en français. Que souhaitez-vous savoir sur vos finances ou vos dépenses ? 😊`;
     }
-
-    return `✨ **About Masarifi:**\n\n` +
-      `👨‍💻 **Creator & Developer:** Proudly built by **Mahfoud** to empower people to take full control of their financial freedom.\n` +
-      `🎯 **Purpose & Vision:** Simplify expense tracking, eliminate unplanned spending, and give intelligent, minute-by-minute financial advice tailored in Ouguiya (MRU).\n` +
-      `📅 **Launch Date:** 2026.\n` +
-      `🚀 **Version:** **2.1.0 (AI Edition & Cloud PWA)**.\n` +
-      `🔒 **Cloud Storage:** Securely powered by Supabase with complete offline resilience.\n\n` +
-      `How can I assist you with your money today? 💚${learnedBonus}`;
+    if (currentSwitch === 'ar') {
+      return `نعم بالتأكيد! سأتحدث معك باللغة العربية من الآن فصاعداً. كيف يمكنني مساعدتك في إدارة مصاريفك اليوم؟ 😊`;
+    }
   }
 
   // =========================================================================
-  // 2. SPECIFIC CATEGORY INQUIRIES (Food, Transport, Bills, Health, etc.)
+  // 2. GREETINGS (Short & direct, not a data dump)
   // =========================================================================
-  const checkCat = (arWord, frWord, enWord) => q.includes(arWord) || q.includes(frWord) || q.includes(enWord);
+  const isGreeting = 
+    /^(مرحبا|مرحباً|أهلاً|اهلا|سلام|السلام عليكم|صباح الخير|مساء الخير|hi|hello|hey|good morning|bonjour|salut)\b/i.test(q) &&
+    q.length < 25;
 
-  const matchedCat = 
-    checkCat('طعام', 'nourriture', 'food') || checkCat('أكل', 'repas', 'eating') ? 'food' :
-    checkCat('مواصلات', 'transport', 'transport') || checkCat('تاكسي', 'taxi', 'car') ? 'transport' :
-    checkCat('تسوق', 'shopping', 'shopping') || checkCat('شراء', 'achats', 'buy') ? 'shopping' :
-    checkCat('فواتير', 'facture', 'bills') || checkCat('فاتورة', 'factures', 'bill') ? 'bills' :
-    checkCat('صحة', 'santé', 'health') || checkCat('دواء', 'médicament', 'doctor') ? 'health' :
-    checkCat('ترفيه', 'divertissement', 'entertainment') ? 'entertainment' :
-    checkCat('تعليم', 'éducation', 'education') ? 'education' : null;
+  if (isGreeting) {
+    if (targetLang === 'en') {
+      return `Hello ${userName}! 👋 How can I help you today? You can ask me about your spending, how to save, or about the app.`;
+    }
+    if (targetLang === 'fr') {
+      return `Bonjour ${userName} ! 👋 Comment puis-je vous aider aujourd'hui ? Vous pouvez me poser des questions sur vos dépenses ou sur vos économies.`;
+    }
+    return `مرحباً بك يا ${userName}! 👋 كيف يمكنني مساعدتك اليوم؟ يمكنك سؤالي عن مصاريفك، كيفية التوفير، أو أي تفاصيل حول التطبيق.`;
+  }
 
-  if (matchedCat) {
-    const amount = categoryTotals[matchedCat] || 0;
-    const catName = t(`categories.${matchedCat}`);
-    const pct = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
-    const budgetVal = budgets[matchedCat] || 0;
+  // =========================================================================
+  // 3. WHO CREATED THE APP / DEVELOPER / VERSION (Targeted response)
+  // =========================================================================
+  const isAboutCreator =
+    q.includes('من صنع') || q.includes('من طور') || q.includes('من هو المطور') || q.includes('من صمم') ||
+    q.includes('من أنشأ') || q.includes('who created') || q.includes('who made') || q.includes('who built') ||
+    q.includes('who developed') || q.includes('who is the developer') || q.includes('qui a créé') ||
+    q.includes('qui a développé') || q.includes('qui est le développeur');
 
-    if (detectedLang === 'ar') {
-      let r = `🍽️ **تحليل فئة (${catName}):**\n\n`;
-      r += `• **المصروف حتى الآن:** **${fmt(amount)} ${cur}** (${pct}% من إجمالي مصاريفك).\n`;
-      if (budgetVal > 0) {
-        const bpct = Math.round((amount / budgetVal) * 100);
-        r += `• **الميزانية المحددة:** ${fmt(budgetVal)} ${cur} (استهلكت منها ${bpct}%).\n`;
-        r += bpct > 100 ? `⚠️ **تجاوزت ميزانية هذه الفئة بمقدار ${fmt(amount - budgetVal)} ${cur}!**\n` : `✅ ما زلت ضمن حدود ميزانيتك.\n`;
+  if (isAboutCreator) {
+    if (targetLang === 'en') {
+      return `👨‍💻 **Masarifi** was developed by **Mahfoud** in 2026 to help people easily manage their money, track expenses in Mauritanian Ouguiya (MRU), and achieve financial control.`;
+    }
+    if (targetLang === 'fr') {
+      return `👨‍💻 **Masarifi** a été développé par **Mahfoud** en 2026 pour aider la communauté à maîtriser ses dépenses quotidiennes en Ouguiya (MRU) et à épargner plus efficacement.`;
+    }
+    return `👨‍💻 تم تطوير تطبيق **مصاريفي** بواسطة **محفوظ (Mahfoud)** في عام 2026 لمساعدة المجتمع على إدارة المصاريف اليومية بالأوقية والتحكم في الميزانية بسهولة.`;
+  }
+
+  // What is this app / Version / Launch info
+  const isAboutAppOrVersion =
+    q.includes('ما هو هذا التطبيق') || q.includes('ما هو تطبيق') || q.includes('ما فائدة التطبيق') ||
+    q.includes('الاصدار') || q.includes('الإصدار') || q.includes('نسخة') ||
+    q.includes('what is this app') || q.includes('what is masarifi') || q.includes('version') ||
+    q.includes('c\'est quoi cette application') || q.includes('quelle est la version');
+
+  if (isAboutAppOrVersion) {
+    if (targetLang === 'en') {
+      return `📱 **Masarifi (v2.1.0 AI Edition)** is an intelligent personal finance and expense-tracking Progressive Web App with cloud database sync and real-time AI coaching.`;
+    }
+    if (targetLang === 'fr') {
+      return `📱 **Masarifi (v2.1.0 Édition IA)** est une application web progressive de gestion financière personnelle, synchronisée dans le cloud et dotée d'un conseiller IA intelligent.`;
+    }
+    return `📱 **مصاريفي (الإصدار 2.1.0 الذكي)** هو تطبيق ويب متطور لتتبع المصاريف والدخل وإدارة الميزانيات بدقة مع مستشار ذكاء اصطناعي فوري ومزامنة سحابية.`;
+  }
+
+  // =========================================================================
+  // 4. SPECIFIC CATEGORY QUESTIONS (e.g. "كم صرفت على الطعام؟" or "how much on food?")
+  // =========================================================================
+  const catKeywords = {
+    food: ['طعام', 'أكل', 'مطعم', 'food', 'eating', 'meals', 'nourriture', 'restaurant', 'repas'],
+    transport: ['مواصلات', 'نقل', 'تاكسي', 'بنزين', 'سيارة', 'transport', 'taxi', 'car', 'fuel', 'gaz'],
+    shopping: ['تسوق', 'شراء', 'ملابس', 'shopping', 'clothes', 'achats', 'vêtements'],
+    bills: ['فواتير', 'فاتورة', 'كهرباء', 'ماء', 'انترنت', 'bills', 'bill', 'electricity', 'water', 'internet', 'facture', 'factures'],
+    health: ['صحة', 'دواء', 'طبيب', 'صيدلية', 'health', 'medicine', 'doctor', 'pharmacy', 'santé', 'médicament'],
+    entertainment: ['ترفيه', 'سينما', 'رحلة', 'entertainment', 'fun', 'movies', 'divertissement', 'loisirs'],
+    education: ['تعليم', 'دراسة', 'كتب', 'education', 'school', 'books', 'études', 'livres'],
+  };
+
+  for (const [catKey, words] of Object.entries(catKeywords)) {
+    if (words.some((w) => q.includes(w))) {
+      const amount = categoryTotals[catKey] || 0;
+      const catLabel = t(`categories.${catKey}`);
+      const pct = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
+
+      if (targetLang === 'en') {
+        return `You have spent **${fmt(amount)} ${cur}** on **${catLabel}** this month (${pct}% of your total spending).`;
       }
-      r += `\n💡 **نصيحة التوفير:** تقليص 20% من مشتريات ${catName} سيوفر لك فوراً **${fmt(amount * 0.2)} ${cur}**.`;
-      return r + learnedBonus;
+      if (targetLang === 'fr') {
+        return `Vous avez dépensé **${fmt(amount)} ${cur}** en **${catLabel}** ce mois-ci (${pct}% de vos dépenses totales).`;
+      }
+      return `لقد صرفت **${fmt(amount)} ${cur}** على **${catLabel}** هذا الشهر (${pct}% من إجمالي مصاريفك).`;
     }
-
-    if (detectedLang === 'fr') {
-      return `📊 **Analyse de la catégorie (${catName}) :**\n\n` +
-        `• **Montant dépensé :** **${fmt(amount)} ${cur}** (${pct}% de vos dépenses totales).\n` +
-        (budgetVal > 0 ? `• **Budget défini :** ${fmt(budgetVal)} ${cur} (${Math.round((amount / budgetVal) * 100)}% utilisé).\n` : '') +
-        `\n💡 **Conseil d'économie :** Réduire cette catégorie de 20% vous fera économiser **${fmt(amount * 0.2)} ${cur}**.${learnedBonus}`;
-    }
-
-    return `📊 **Category Analysis (${catName}):**\n\n` +
-      `• **Spent so far:** **${fmt(amount)} ${cur}** (${pct}% of your total expenses).\n` +
-      (budgetVal > 0 ? `• **Set Budget:** ${fmt(budgetVal)} ${cur} (${Math.round((amount / budgetVal) * 100)}% used).\n` : '') +
-      `\n💡 **Savings Tip:** Cutting 20% of your ${catName} expenses will save you **${fmt(amount * 0.2)} ${cur}**.${learnedBonus}`;
   }
 
   // =========================================================================
-  // 3. WHERE DID MY MONEY GO / BIGGEST EXPENSES
+  // 5. WHERE DID MY MONEY GO / BIGGEST SPENDING
   // =========================================================================
-  if (
-    q.includes('أين') || q.includes('وين') || q.includes('أكبر') || q.includes('فيم') || q.includes('أكثر') || q.includes('اكبر') ||
-    q.includes('où') || q.includes('plus grand') || q.includes('dépensé') || q.includes('parti') ||
-    q.includes('where') || q.includes('biggest') || q.includes('most') || q.includes('spent')
-  ) {
-    if (!topCategory) {
-      if (detectedLang === 'ar') return `مرحباً ${userName}! 📊 لم تسجل أي مصاريف حتى الآن لهذا الشهر. أضف معاملاتك عبر زر (+) وسأحللها لك فوراً!`;
-      if (detectedLang === 'fr') return `Bonjour ${userName} ! Aucune dépense enregistrée ce mois-ci. Cliquez sur (+) pour commencer !`;
-      return `Hello ${userName}! No expenses recorded this month yet. Tap (+) to start tracking!`;
+  const isAskingWhereMoneyWent =
+    q.includes('أين') || q.includes('وين') || q.includes('أكبر') || q.includes('أكثر') ||
+    q.includes('where') || q.includes('biggest') || q.includes('most') ||
+    q.includes('où') || q.includes('plus grand') || q.includes('majeure');
+
+  if (isAskingWhereMoneyWent) {
+    if (!topCat || topCat[1] === 0) {
+      if (targetLang === 'en') return `You haven't recorded any expenses yet this month! Tap (+) to add one.`;
+      if (targetLang === 'fr') return `Vous n'avez encore enregistré aucune dépense ce mois-ci ! Appuyez sur (+) pour en ajouter une.`;
+      return `لم تسجل أي مصاريف حتى الآن لهذا الشهر! اضغط على (+) لإضافة أول معاملة.`;
     }
 
-    const topCatName = t(`categories.${topCategory[0]}`);
-    const topCatAmount = fmt(topCategory[1]);
-    const topCatPercent = totalExpenses > 0 ? Math.round((topCategory[1] / totalExpenses) * 100) : 0;
-    const potentialSaving = fmt(topCategory[1] * 0.15);
+    const catName = t(`categories.${topCat[0]}`);
+    const pct = totalExpenses > 0 ? Math.round((topCat[1] / totalExpenses) * 100) : 0;
 
-    if (detectedLang === 'ar') {
-      return `🔍 **تحليل أكبر المصاريف يا ${userName}:**\n\n` +
-        `أكبر باب خرجت فيه أموالك هو **${topCatName}** بمبلغ **${topCatAmount} ${cur}** (${topCatPercent}% من مجموع مصاريفك).\n\n` +
-        (sortedCategories[1] ? `ويليه في المرتبة الثانية: **${t(`categories.${sortedCategories[1][0]}`)}** بمبلغ **${fmt(sortedCategories[1][1])} ${cur}**.\n\n` : '') +
-        `💡 **خطة التوفير الدقيقة:** تقليص نفقات ${topCatName} بنسبة 15% فقط يوفر لك **${potentialSaving} ${cur}** قبل نهاية الشهر!${learnedBonus}`;
+    if (targetLang === 'en') {
+      return `Your biggest expense this month is **${catName}** at **${fmt(topCat[1])} ${cur}** (${pct}% of all spending).`;
     }
-
-    if (detectedLang === 'fr') {
-      return `🔍 **Analyse de vos principales dépenses, ${userName} :**\n\n` +
-        `Votre dépense n°1 est **${topCatName}** avec **${topCatAmount} ${cur}** (${topCatPercent}% de vos dépenses).\n\n` +
-        `💡 **Conseil :** En réduisant cette catégorie de 15%, vous économiserez **${potentialSaving} ${cur}** ce mois-ci !${learnedBonus}`;
+    if (targetLang === 'fr') {
+      return `Votre principale dépense ce mois-ci est **${catName}** avec **${fmt(topCat[1])} ${cur}** (${pct}% de vos dépenses).`;
     }
-
-    return `🔍 **Your Highest Spending Breakdown, ${userName}:**\n\n` +
-      `Your #1 spending area is **${topCatName}** with **${topCatAmount} ${cur}** (${topCatPercent}% of all expenses).\n\n` +
-      `💡 **Actionable Tip:** Trimming this category by 15% frees up **${potentialSaving} ${cur}** in savings!${learnedBonus}`;
+    return `أكبر باب صرفت فيه هذا الشهر هو **${catName}** بمبلغ **${fmt(topCat[1])} ${cur}** (${pct}% من مجموع مصاريفك).`;
   }
 
   // =========================================================================
-  // 4. HOW TO SAVE / MINUTE-BY-MINUTE EXPENSE MINIMIZER
+  // 6. HOW TO SAVE / REDUCE EXPENSES
   // =========================================================================
-  if (
-    q.includes('وفر') || q.includes('توفير') || q.includes('نصيح') || q.includes('تقليص') || q.includes('اقتصد') || q.includes('أقلل') ||
-    q.includes('économis') || q.includes('conseil') || q.includes('réduire') || q.includes('épargn') ||
-    q.includes('save') || q.includes('saving') || q.includes('reduce') || q.includes('cut') || q.includes('tip')
-  ) {
+  const isAskingHowToSave =
+    q.includes('وفر') || q.includes('توفير') || q.includes('أقلل') || q.includes('نصيح') ||
+    q.includes('save') || q.includes('saving') || q.includes('reduce') || q.includes('cut') ||
+    q.includes('économis') || q.includes('réduire') || q.includes('épargn');
+
+  if (isAskingHowToSave) {
     const dailyCap = totalIncome > totalExpenses && remainingDays > 0
       ? fmt((totalIncome - totalExpenses) / remainingDays)
-      : fmt(dailyAverage * 0.75);
+      : fmt(dailyAverage * 0.8);
 
-    if (detectedLang === 'ar') {
-      return `🎯 **خطتك الذكية لتقليص المصاريف والتوفير يا ${userName}:**\n\n` +
-        `1️⃣ **معدلك اليومي الحالي:** أنت تصرف حوالي **${fmt(dailyAverage)} ${cur}/يومياً**.\n` +
-        `2️⃣ **سقف الصرف اليومي المقترح:** الزم نفسك بسقف أقصاه **${dailyCap} ${cur}/يوم** في الأيام الـ ${remainingDays} المتبقية.\n` +
-        (topCategory ? `3️⃣ **تحجيم النفقات الأكثر استنزافاً:** فئة (${t(`categories.${topCategory[0]}`)}) تستهلك ${fmt(topCategory[1])} ${cur}. كل يوم تؤجل فيه مشتريات غير ضرورية فيها، تحتفظ بأموالك.\n` : '') +
-        `4️⃣ **قاعدة الـ 24 ساعة:** قبل شراء أي شيء غير أساسي، انتظر 24 ساعة؛ 70% من المشتريات العفوية تلغى تلقائياً!${learnedBonus}`;
+    if (targetLang === 'en') {
+      return `💡 **Quick Savings Plan:**\n• Keep your daily spending under **${dailyCap} ${cur}/day** for the remaining ${remainingDays} days.\n` +
+        (topCat ? `• Trimming just 15% from **${t(`categories.${topCat[0]}`)}** will save you **${fmt(topCat[1] * 0.15)} ${cur}** this month.` : '');
     }
-
-    if (detectedLang === 'fr') {
-      return `🎯 **Votre plan d'optimisation financière, ${userName} :**\n\n` +
-        `1️⃣ **Dépense moyenne journalière :** **${fmt(dailyAverage)} ${cur}/jour**.\n` +
-        `2️⃣ **Plafond quotidien recommandé :** Ne dépassez pas **${dailyCap} ${cur}/jour** pour les ${remainingDays} jours restants.\n` +
-        `3️⃣ **Règle des 24 heures :** Avant tout achat non essentiel, attendez 24 heures pour éviter les achats d'impulsion !${learnedBonus}`;
+    if (targetLang === 'fr') {
+      return `💡 **Plan d'économie rapide :**\n• Gardez vos dépenses sous **${dailyCap} ${cur}/jour** pour les ${remainingDays} jours restants.\n` +
+        (topCat ? `• Réduire de 15% la catégorie **${t(`categories.${topCat[0]}`)}** vous fera économiser **${fmt(topCat[1] * 0.15)} ${cur}**.` : '');
     }
-
-    return `🎯 **Your Actionable Expense Minimizer Plan, ${userName}:**\n\n` +
-      `1️⃣ **Current Daily Burn Rate:** **${fmt(dailyAverage)} ${cur}/day**.\n` +
-      `2️⃣ **Target Daily Spending Cap:** Keep expenses below **${dailyCap} ${cur}/day** for the remaining ${remainingDays} days.\n` +
-      `3️⃣ **24-Hour Rule:** Wait 24 hours before any non-essential purchase to eliminate impulse spending!${learnedBonus}`;
+    return `💡 **خطة توفير سريعة ومباشرة:**\n• اضبط سقف صرفك اليومي بحيث لا يتجاوز **${dailyCap} ${cur}/يوم** في الأيام الـ ${remainingDays} المتبقية.\n` +
+      (topCat ? `• إذا خفّضت 15% فقط من مصاريف **${t(`categories.${topCat[0]}`)}**، ستوفر **${fmt(topCat[1] * 0.15)} ${cur}** قبل نهاية الشهر.` : '');
   }
 
   // =========================================================================
-  // 5. FULL FINANCIAL SUMMARY / BALANCE & HEALTH CHECK
+  // 7. BALANCE / TOTAL SUMMARY
   // =========================================================================
-  if (
-    q.includes('ملخص') || q.includes('وضعي') || q.includes('كم') || q.includes('تقرير') || q.includes('إجمالي') || q.includes('رصيد') ||
-    q.includes('bilan') || q.includes('résumé') || q.includes('solde') || q.includes('total') || q.includes('combien') ||
-    q.includes('summary') || q.includes('balance') || q.includes('report') || q.includes('how much') || q.includes('total')
-  ) {
-    if (detectedLang === 'ar') {
-      return `📊 **التقرير المالي الكامل لهذا الشهر يا ${userName}:**\n\n` +
-        `• 💵 **إجمالي الدخل:** ${fmt(totalIncome)} ${cur}\n` +
-        `• 💳 **إجمالي المصاريف:** ${fmt(totalExpenses)} ${cur}\n` +
-        `• ⚖️ **الرصيد الصافي:** ${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur} ${netBalance >= 0 ? '🟢 (فائض ممتاز)' : '🔴 (عجز مالي!)'}\n` +
-        `• 📅 **المعدل اليومي:** ${fmt(dailyAverage)} ${cur}/يوم\n` +
-        `• 📈 **التوقع لنهاية الشهر:** ${fmt(projectedMonthly)} ${cur}\n` +
-        `• 🏆 **معدل الادخار:** ${savingsRate}%\n\n` +
-        (netBalance < 0 
-          ? `⚠️ **تنبيه حاسم:** لقد تجاوزت دخلك! ركّز فقط على الضروريات حتى بداية الشهر القادم.` 
-          : `👏 **أداء رائع:** أنت تسير بنجاح ضمن إدارة مالية متوازنة!`) + learnedBonus;
+  const isAskingBalance =
+    q.includes('رصيد') || q.includes('كم معي') || q.includes('مجموع') || q.includes('إجمالي') || q.includes('ملخص') ||
+    q.includes('balance') || q.includes('total') || q.includes('how much') || q.includes('summary') ||
+    q.includes('solde') || q.includes('combien') || q.includes('bilan');
+
+  if (isAskingBalance) {
+    if (targetLang === 'en') {
+      return `📊 **Financial Status:**\n• Total Income: **${fmt(totalIncome)} ${cur}**\n• Total Expenses: **${fmt(totalExpenses)} ${cur}**\n• Net Balance: **${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur}**`;
     }
-
-    if (detectedLang === 'fr') {
-      return `📊 **Bilan financier complet pour ce mois, ${userName} :**\n\n` +
-        `• 💵 **Revenus totaux :** ${fmt(totalIncome)} ${cur}\n` +
-        `• 💳 **Dépenses totales :** ${fmt(totalExpenses)} ${cur}\n` +
-        `• ⚖️ **Solde net :** ${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur} ${netBalance >= 0 ? '🟢' : '🔴'}\n` +
-        `• 📅 **Moyenne par jour :** ${fmt(dailyAverage)} ${cur}/jour\n` +
-        `• 🏆 **Taux d'épargne :** ${savingsRate}%\n\n` +
-        (netBalance < 0 ? `⚠️ **Alerte :** Vous êtes en déficit ce mois-ci. Réduisez les dépenses secondaires.` : `👏 **Bravo :** Vos finances sont bien gérées !`) + learnedBonus;
+    if (targetLang === 'fr') {
+      return `📊 **Situation Financière :**\n• Revenus : **${fmt(totalIncome)} ${cur}**\n• Dépenses : **${fmt(totalExpenses)} ${cur}**\n• Solde net : **${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur}**`;
     }
-
-    return `📊 **Full Financial Health Report, ${userName}:**\n\n` +
-      `• 💵 **Total Income:** ${fmt(totalIncome)} ${cur}\n` +
-      `• 💳 **Total Expenses:** ${fmt(totalExpenses)} ${cur}\n` +
-      `• ⚖️ **Net Balance:** ${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur} ${netBalance >= 0 ? '🟢' : '🔴'}\n` +
-      `• 📅 **Daily Average:** ${fmt(dailyAverage)} ${cur}/day\n` +
-      `• 🏆 **Savings Rate:** ${savingsRate}%\n\n` +
-      (netBalance < 0 ? `⚠️ **Alert:** Deficit detected. Postpone discretionary expenses.` : `👏 **Great job:** You are maintaining healthy positive cash flow!`) + learnedBonus;
+    return `📊 **الوضع المالي الحالي:**\n• إجمالي الدخل: **${fmt(totalIncome)} ${cur}**\n• إجمالي المصاريف: **${fmt(totalExpenses)} ${cur}**\n• الرصيد الصافي: **${netBalance >= 0 ? '+' : ''}${fmt(netBalance)} ${cur}**`;
   }
 
   // =========================================================================
-  // 6. DEFAULT NATURAL RESPONSE WITH ADAPTIVE INTELLIGENCE
+  // 8. CONCISE ADAPTIVE FALLBACK
   // =========================================================================
-  if (detectedLang === 'ar') {
-    return `أهلاً بك يا ${userName}! 🤖 أنا مستشارك المالي الذكي في **مصاريفي**.\n\n` +
-      `مجموع مصاريفك المسجلة هذا الشهر: **${fmt(totalExpenses)} ${cur}** (بمعدل **${fmt(dailyAverage)} ${cur}/يوم**).\n\n` +
-      `اسألني بحرية عن أي شيء، مثل:\n` +
-      `• *"من طور هذا التطبيق وما قصته؟"*\n` +
-      `• *"أين ذهبت أغلب أموالي هذا الشهر؟"*\n` +
-      `• *"كم صرفت على الطعام أو المواصلات؟"*\n` +
-      `• *"كيف أوفر وأقلص مصاريفي هذا الشهر؟"*\n` +
-      `• *"ما هو الإصدار الحالي للتطبيق؟"*${learnedBonus}`;
+  if (targetLang === 'en') {
+    return `I'm listening, ${userName}! You've spent **${fmt(totalExpenses)} ${cur}** this month. What specific question do you have about your spending or the app?`;
   }
-
-  if (detectedLang === 'fr') {
-    return `Bonjour ${userName} ! 🤖 Je suis votre assistant financier intelligent dans **Masarifi**.\n\n` +
-      `Vos dépenses totales ce mois-ci sont de **${fmt(totalExpenses)} ${cur}** (moyenne : **${fmt(dailyAverage)} ${cur}/jour**).\n\n` +
-      `Vous pouvez me demander n'importe quoi, par exemple :\n` +
-      `• *"Qui a créé cette application et pourquoi ?"*\n` +
-      `• *"Où est passé mon argent ce mois-ci ?"*\n` +
-      `• *"Combien ai-je dépensé en nourriture ou transport ?"*\n` +
-      `• *"Donne-moi des astuces concrètes pour économiser"*${learnedBonus}`;
+  if (targetLang === 'fr') {
+    return `Je suis à votre écoute, ${userName} ! Vous avez dépensé **${fmt(totalExpenses)} ${cur}** ce mois-ci. Quelle est votre question sur vos finances ou l'application ?`;
   }
-
-  return `Hello ${userName}! 🤖 I'm your smart AI Financial Advisor in **Masarifi**.\n\n` +
-    `Total expenses this month: **${fmt(totalExpenses)} ${cur}** (daily average: **${fmt(dailyAverage)} ${cur}/day**).\n\n` +
-    `Ask me anything, such as:\n` +
-    `• *"Who created Masarifi and why?"*\n` +
-    `• *"Where did most of my money go?"*\n` +
-    `• *"How much did I spend on food or transport?"*\n` +
-    `• *"How can I cut expenses and save more this month?"*${learnedBonus}`;
+  return `أنا في الاستماع يا ${userName}! مجموع مصاريفك هذا الشهر **${fmt(totalExpenses)} ${cur}**. ما هو سؤالك المحدد عن أموالك أو عن التطبيق؟`;
 }
