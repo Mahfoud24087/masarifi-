@@ -6,6 +6,7 @@ import {
 import { useMasarifi } from '../context/MasarifiContext';
 import { generateFinancialInsight } from '../lib/aiAdvisor';
 import { askGemini } from '../lib/geminiApi';
+import { askGroqAI } from '../lib/groqApi';
 
 const SESSIONS_STORAGE_KEY = 'masarifi_ai_chat_sessions_v1';
 const ACTIVE_SESSION_STORAGE_KEY = 'masarifi_ai_active_session_id';
@@ -150,34 +151,24 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
 
     let reply = '';
 
-    // 1. If Gemini is configured and active, call Gemini API
-    if (geminiKey && geminiKey.trim()) {
-      try {
-        const geminiRes = await askGemini({
-          prompt: textToSend,
-          apiKey: geminiKey,
-          expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang,
-          conversationHistory: updatedMessages,
-        });
+    // 1. Primary: High-speed Generative LLM via Groq
+    try {
+      const groqRes = await askGroqAI({
+        prompt: textToSend,
+        apiKey: import.meta.env.VITE_GROQ_API_KEY,
+        expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang,
+        conversationHistory: updatedMessages,
+      });
 
-        if (geminiRes.success && geminiRes.text) {
-          reply = geminiRes.text;
-        } else {
-          reply = generateFinancialInsight({
-            prompt: textToSend,
-            expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
-            conversationHistory: updatedMessages,
-          });
-        }
-      } catch (err) {
-        reply = generateFinancialInsight({
-          prompt: textToSend,
-          expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
-          conversationHistory: updatedMessages,
-        });
+      if (groqRes.success && groqRes.text) {
+        reply = groqRes.text;
       }
-    } else {
-      // 2. Intelligent local engine fallback
+    } catch (err) {
+      console.warn('Groq call error:', err);
+    }
+
+    // 2. Fallback to adaptive engine if needed
+    if (!reply) {
       reply = generateFinancialInsight({
         prompt: textToSend,
         expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
