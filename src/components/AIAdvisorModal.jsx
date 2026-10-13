@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bot, Send, Sparkles, X, User, ArrowDownCircle, RefreshCw, 
-  HelpCircle, Lightbulb, PieChart, Info, ShieldCheck, Zap 
+  HelpCircle, Lightbulb, PieChart, Info, ShieldCheck, Zap, Key, Settings, Check
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { generateFinancialInsight } from '../lib/aiAdvisor';
+import { askGemini } from '../lib/geminiApi';
 
 export default function AIAdvisorModal({ isOpen, onClose }) {
   const {
@@ -22,6 +23,15 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     }
   });
   const [isTyping, setIsTyping] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(() => {
+    return localStorage.getItem('masarifi_gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+  });
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [tempKey, setTempKey] = useState('');
+  const [activeEngine, setActiveEngine] = useState(() => {
+    return (localStorage.getItem('masarifi_gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY) ? 'gemini' : 'local';
+  });
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -62,7 +72,21 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleSend = (text) => {
+  const handleSaveKey = () => {
+    const cleaned = tempKey.trim();
+    if (cleaned) {
+      localStorage.setItem('masarifi_gemini_api_key', cleaned);
+      setGeminiKey(cleaned);
+      setActiveEngine('gemini');
+    } else {
+      localStorage.removeItem('masarifi_gemini_api_key');
+      setGeminiKey('');
+      setActiveEngine('local');
+    }
+    setShowKeyModal(false);
+  };
+
+  const handleSend = async (text) => {
     const textToSend = (text || input).trim();
     if (!textToSend) return;
 
@@ -74,25 +98,55 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     setInput('');
     setIsTyping(true);
 
-    // Natural responsive AI typing simulation
-    setTimeout(() => {
-      const reply = generateFinancialInsight({
+    let reply = '';
+
+    // 1. If Gemini is configured and active, call real Gemini API
+    if (geminiKey && geminiKey.trim()) {
+      try {
+        const geminiRes = await askGemini({
+          prompt: textToSend,
+          apiKey: geminiKey,
+          expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang,
+          conversationHistory: updatedHistory,
+        });
+
+        if (geminiRes.success && geminiRes.text) {
+          reply = geminiRes.text;
+        } else {
+          console.warn('Gemini error, falling back to local engine:', geminiRes.error);
+          reply = generateFinancialInsight({
+            prompt: textToSend,
+            expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
+            conversationHistory: updatedHistory,
+          });
+        }
+      } catch (err) {
+        console.warn('Gemini call failed, using local engine:', err);
+        reply = generateFinancialInsight({
+          prompt: textToSend,
+          expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
+          conversationHistory: updatedHistory,
+        });
+      }
+    } else {
+      // 2. Local fallback engine
+      reply = generateFinancialInsight({
         prompt: textToSend,
         expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
         conversationHistory: updatedHistory,
       });
+    }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'ai',
-          text: reply,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-      setIsTyping(false);
-    }, 450);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: reply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+    setIsTyping(false);
   };
 
   const handleClearHistory = () => {
@@ -163,6 +217,21 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                setTempKey(geminiKey);
+                setShowKeyModal(true);
+              }}
+              title={lang === 'ar' ? 'إعدادات مفتاح Google Gemini' : 'Google Gemini API Settings'}
+              className={`p-2 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-semibold ${
+                geminiKey 
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                  : isDark ? 'hover:bg-slate-800 text-amber-400' : 'hover:bg-slate-100 text-amber-600'
+              }`}
+            >
+              <Key size={16} />
+              <span className="hidden sm:inline">{geminiKey ? 'Gemini 1.5' : (lang === 'ar' ? 'تفعيل Gemini' : 'Enable Gemini')}</span>
+            </button>
             <button
               onClick={handleClearHistory}
               title={lang === 'ar' ? 'بدء محادثة جديدة' : 'New chat'}
@@ -305,9 +374,82 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
             </button>
           </form>
           <p className="text-[10px] text-center text-slate-400 mt-2 font-medium">
-            💡 {lang === 'ar' ? 'يدعم المحادثة الحرة، الإجابة عن المصاريف، معلومات التطبيق، وخطط التوفير' : 'Answers financial questions, creator background, and savings tips'}
+            💡 {lang === 'ar' ? 'يدعم Gemini 1.5 الذكي للإجابة عن أي سؤال بأي لغة أو لهجة في العالم' : 'Powered by Gemini 1.5 Flash for natural answers in any language'}
           </p>
         </div>
+
+        {/* ─── Gemini Key Settings Modal ─── */}
+        {showKeyModal && (
+          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${
+              isDark ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center">
+                    <Key size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base">Google Gemini API</h4>
+                    <p className="text-xs text-slate-400">Gemini 1.5 Flash (Free Tier)</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowKeyModal(false)} className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 mb-4">
+                {lang === 'ar'
+                  ? 'ضع مفتاح Gemini المجاني ليتحول المستشار إلى ذكاء اصطناعي حقيقي 100% يجيب على أي سؤال، يفهم أي لغة ولهجة، ويحلل مصاريفك بطلاقة.'
+                  : 'Enter your free Google Gemini API Key to enable true generative AI intelligence.'}
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-xs font-semibold mb-1.5 text-slate-400">
+                  {lang === 'ar' ? 'مفتاح الـ API (API Key)' : 'API Key'}
+                </label>
+                <input
+                  type="password"
+                  value={tempKey}
+                  onChange={(e) => setTempKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className={`w-full px-4 py-3 rounded-2xl text-xs font-mono border outline-none ${
+                    isDark 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500' 
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500'
+                  }`}
+                />
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[11px] text-emerald-500 hover:underline font-semibold"
+                >
+                  🔗 {lang === 'ar' ? 'احصل على مفتاح مجاني في ثوانٍ من Google AI Studio' : 'Get a free key from Google AI Studio'}
+                </a>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowKeyModal(false)}
+                  className={`flex-1 py-3 rounded-2xl text-xs font-semibold ${
+                    isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  onClick={handleSaveKey}
+                  className="flex-1 py-3 rounded-2xl text-xs font-bold text-white shadow-lg shadow-emerald-500/20"
+                  style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+                >
+                  {lang === 'ar' ? 'حفظ وتفعيل' : 'Save & Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
