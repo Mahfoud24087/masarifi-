@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
+import InstallPrompt from '../components/InstallPrompt';
 
 const LANGS = [
   { code: 'ar', label: 'العربية', flag: '🇲🇷' },
@@ -187,6 +188,7 @@ export default function LandingScreen() {
           </div>
         )}
       </div>
+      <InstallPrompt />
     </div>
   );
 }
