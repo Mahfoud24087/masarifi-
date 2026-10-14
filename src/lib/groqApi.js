@@ -23,10 +23,10 @@ export async function askGroqAI({
     return { success: false, error: 'NO_API_KEY' };
   }
 
-  // Format financial snapshot
+  // Format financial snapshot with notes and custom category
   const topExpenses = expenses
-    .slice(0, 10)
-    .map(e => `- ${e.title}: ${e.amount} MRU (${e.category}, ${e.date})`)
+    .slice(0, 25)
+    .map(e => `- ${e.title}: ${e.amount} MRU (Category: ${e.custom_category || e.category}, Date: ${e.date}${e.notes ? `, Note: ${e.notes}` : ''})`)
     .join('\n');
 
   const systemPrompt = `You are "Mustasharak / مستشارك المالي", the intelligent AI financial coach embedded in the Masarifi (مصاريفي) personal expense tracker application.
