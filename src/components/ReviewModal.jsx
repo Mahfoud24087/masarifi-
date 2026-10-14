@@ -26,11 +26,11 @@ export default function ReviewModal() {
 
   const handleClose = () => setShowReviewModal(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!comment.trim()) { setError(t('review.commentRequired')); return; }
-    const res = addReview({ stars, comment });
-    if (res.success) {
+    const res = await addReview({ stars, comment });
+    if (res && res.success) {
       showToast('⭐ ' + t('review.thanks'));
       handleClose();
     }
