@@ -162,12 +162,12 @@ export function generateFinancialInsight({
 
   if (isAboutCreator) {
     if (targetLang === 'en') {
-      return `👨‍💻 **Masarifi** was developed by **Mahfoud** in 2026 to help individuals effortlessly track their daily expenses in Mauritanian Ouguiya (MRU) and take control of their finances.`;
+      return `👨‍💻 **Masarifi** was developed by **Mahfoud Khayri**, a final-year student at SupNum, as a personal initiative to help his community manage their daily expenses in Ouguiya (MRU) before graduating.`;
     }
     if (targetLang === 'fr') {
-      return `👨‍💻 **Masarifi** a été développé par **Mahfoud** en 2026 pour aider la communauté à gérer facilement leurs dépenses quotidiennes en Ouguiya (MRU) et maîtriser leur budget.`;
+      return `👨‍💻 **Masarifi** a été développé par **Mahfoud Khayri**, étudiant en dernière année à SupNum, comme une initiative personnelle pour aider sa communauté à gérer leurs dépenses en Ouguiya (MRU) avant d'obtenir son diplôme.`;
     }
-    return `👨‍💻 تم تطوير تطبيق **مصاريفي** بواسطة **محفوظ (Mahfoud)** في عام 2026 لمساعدتك في تتبع مصاريفك اليومية بالأوقية والتحكم في ميزانيتك.`;
+    return `👨‍💻 تم تطوير تطبيق **مصاريفي** بواسطة **محفوظ خيري**، وهو طالب في سنته الأخيرة في SupNum، كمبادرة شخصية لخدمة مجتمعه ومساعدتهم على تتبع مصاريفهم اليومية بالأوقية (MRU) قبل تخرجه.`;
   }
 
   // =========================================================================
