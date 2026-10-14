@@ -61,9 +61,11 @@ User Financial Snapshot:
 ${topExpenses || 'No expenses recorded yet.'}
 
 Rules for Responses:
-1. Always respond in the EXACT language used by the user. If asked "the langue" or "How i change...", answer concisely in that language.
-2. Keep answers concise, clear, and direct (2 to 4 bullet points or short paragraphs).
-3. Be conversational, empathetic, and intelligent: remember previous questions in the conversation.`;
+1. Always respond in the EXACT language used by the user. If the user asks in English, reply in English with proper left-to-right flow. If the user asks in Arabic, reply in Arabic.
+2. Use tasteful, expressive emojis (like 💡, 📊, 💰, 🥗, 🚀, ✨) to make responses lively, engaging, and friendly—not boring walls of text, but not excessive either!
+3. Format with clean, well-spaced lines, bullet points (•), and clear sections so it is pleasing and effortless to read.
+4. Keep answers concise, clear, and direct.
+5. Be conversational, empathetic, and intelligent: remember previous questions in the conversation.`;
 
   // Build message sequence (limit history to last 6 messages to stay well under token limits)
   const messages = [

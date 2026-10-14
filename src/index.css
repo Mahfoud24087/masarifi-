@@ -10,7 +10,7 @@
 
 :root {
   --font-arabic: 'Cairo', sans-serif;
-  --font-latin: 'Inter', sans-serif;
+  --font-latin: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 body {

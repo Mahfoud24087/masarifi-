@@ -365,24 +365,88 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
                   </div>
                 )}
 
-                <div
-                  className={`max-w-[85%] sm:max-w-[78%] rounded-3xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm transition-all ${
-                    m.sender === 'user'
-                      ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white font-medium rounded-br-none'
-                      : isDark
-                      ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none shadow-md'
-                      : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-[0_2px_12px_rgba(0,0,0,0.04)]'
-                  }`}
-                >
-                  <div>{m.text}</div>
-                  {m.time && (
-                    <div className={`text-[10px] mt-1.5 font-medium ${
-                      m.sender === 'user' ? 'text-white/70 text-end' : 'text-slate-400 text-end'
-                    }`}>
-                      {m.time}
+                {/* Auto text direction helper: inspect first letter */}
+                {(() => {
+                  const isArabicText = /[\u0600-\u06FF]/.test(m.text || '');
+                  const messageDir = isArabicText ? 'rtl' : 'ltr';
+
+                  // Format text nicely (handle **bold** -> semi-bold, *italics*, bullet points)
+                  const renderFormattedMessage = (content = '') => {
+                    const lines = content.split('\n');
+                    return lines.map((line, lineIdx) => {
+                      if (!line.trim()) {
+                        return <div key={lineIdx} className="h-2" />;
+                      }
+
+                      // Check if line is a bullet point
+                      const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('* ');
+                      const cleanLine = isBullet ? line.trim().replace(/^[•\-\*]\s*/, '') : line;
+
+                      // Parse bold tokens (**text**)
+                      const parts = cleanLine.split(/(\*\*[^*]+\*\*)/g);
+
+                      const formattedParts = parts.map((part, pIdx) => {
+                        if (part.startsWith('**') && part.endsWith('**')) {
+                          return (
+                            <strong 
+                              key={pIdx} 
+                              className={`font-bold ${
+                                m.sender === 'user' 
+                                  ? 'text-white' 
+                                  : isDark ? 'text-emerald-300' : 'text-emerald-700'
+                              }`}
+                            >
+                              {part.slice(2, -2)}
+                            </strong>
+                          );
+                        }
+                        if (part.startsWith('*') && part.endsWith('*')) {
+                          return <em key={pIdx} className="italic opacity-90">{part.slice(1, -1)}</em>;
+                        }
+                        return part;
+                      });
+
+                      if (isBullet) {
+                        return (
+                          <div key={lineIdx} className="flex items-start gap-2 my-1">
+                            <span className={`text-xs mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>•</span>
+                            <div className="flex-1">{formattedParts}</div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <p key={lineIdx} className="my-0.5 leading-relaxed">
+                          {formattedParts}
+                        </p>
+                      );
+                    });
+                  };
+
+                  return (
+                    <div
+                      dir={messageDir}
+                      className={`max-w-[85%] sm:max-w-[78%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm transition-all font-sans ${
+                        messageDir === 'ltr' ? 'text-left' : 'text-right'
+                      } ${
+                        m.sender === 'user'
+                          ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white font-medium rounded-br-none'
+                          : isDark
+                          ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none shadow-md'
+                          : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-[0_2px_12px_rgba(0,0,0,0.04)]'
+                      }`}
+                    >
+                      <div className="space-y-0.5">{renderFormattedMessage(m.text)}</div>
+                      {m.time && (
+                        <div className={`text-[10px] mt-1.5 font-medium ${
+                          m.sender === 'user' ? 'text-white/70' : 'text-slate-400'
+                        } ${messageDir === 'ltr' ? 'text-right' : 'text-left'}`}>
+                          {m.time}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {m.sender === 'user' && (
                   <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
