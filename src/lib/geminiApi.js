@@ -44,8 +44,9 @@ App Knowledge:
 
 Rules:
 1. Always respond in the language used by the user (Arabic, French, or English).
-2. NEVER mention the developer's name (Mahfoud Khayri) unless the user specifically and explicitly asks who created or built the app!
-3. Be concise, direct, helpful, and friendly.`;
+2. ALWAYS use Latin digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) even in Arabic responses. Never use Eastern Arabic numerals (٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩).
+3. NEVER mention the developer's name (Mahfoud Khayri) unless the user specifically and explicitly asks who created or built the app!
+4. Be concise, direct, helpful, and friendly.`;
 
   const contents = [
     { role: 'user', parts: [{ text: systemInstruction }] },

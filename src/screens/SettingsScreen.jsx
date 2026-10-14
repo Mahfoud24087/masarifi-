@@ -146,14 +146,14 @@ export default function SettingsScreen() {
           <div className="flex-1 min-w-0">
             <p className={`font-bold text-base truncate ${textPri}`}>{user?.name}</p>
             <p className={`text-xs ${textSec} mt-0.5`}>
-              {t('settings.memberSince')} {new Date(user?.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-MR' : 'fr-FR', { month: 'long', year: 'numeric' })}
+              {t('settings.memberSince')} {new Date(user?.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>
         <div className={`rounded-2xl p-3 flex items-center justify-between ${isDark ? 'bg-slate-700' : 'bg-emerald-50'}`}>
           <p className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-emerald-700'}`}>{t('settings.totalExpenses')}</p>
           <p className={`text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} dir="ltr">
-            {totalExpenses.toLocaleString()} {t('common.currency')}
+            {totalExpenses.toLocaleString('en-US')} {t('common.currency')}
           </p>
         </div>
       </div>

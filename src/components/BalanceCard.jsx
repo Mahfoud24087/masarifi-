@@ -59,7 +59,7 @@ export default function BalanceCard() {
         <div className="mt-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {monthlyTotal.toLocaleString()}
+              {monthlyTotal.toLocaleString('en-US')}
             </span>
             <span className="text-base sm:text-lg font-medium text-emerald-100">
               {t('common.currency')}

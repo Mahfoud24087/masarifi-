@@ -10,7 +10,7 @@ export default function ExpenseTile({ expense, onEdit, onDelete }) {
     if (!expense?.date) return '';
     try {
       const d = new Date(expense.date);
-      const locale = lang === 'ar' ? 'ar-MR' : lang === 'fr' ? 'fr-FR' : 'en-US';
+      const locale = lang === 'ar' ? 'ar-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
       return d.toLocaleDateString(locale, {
         day: 'numeric',
         month: 'short',
@@ -22,7 +22,7 @@ export default function ExpenseTile({ expense, onEdit, onDelete }) {
   }, [expense?.date, lang]);
 
   const categoryLabel = t(`categories.${expense.category}`) || expense.category;
-  const amountFormatted = Number(expense.amount || 0).toLocaleString();
+  const amountFormatted = Number(expense.amount || 0).toLocaleString('en-US');
 
   return (
     <div

@@ -204,7 +204,7 @@ export default function LandingScreen() {
                     — {item.userName}
                   </p>
                   <p className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                    {new Date(item.date).toLocaleDateString(lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr-FR' : 'en-GB', {
+                    {new Date(item.date).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-GB', {
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                   </p>

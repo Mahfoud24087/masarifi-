@@ -26,7 +26,7 @@ function BudgetBar({ catId, spent, budget, t, isDark }) {
       <div className="flex items-center justify-between mb-1">
         <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t(`categories.${catId}`)}</span>
         <span className={`text-xs font-bold ${over ? 'text-red-500' : warn ? 'text-amber-500' : 'text-emerald-600'}`} dir="ltr">
-          {spent.toLocaleString()} / {budget.toLocaleString()} {t('common.currency')}
+          {spent.toLocaleString('en-US')} / {budget.toLocaleString('en-US')} {t('common.currency')}
         </span>
       </div>
       <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -107,7 +107,7 @@ export default function DashboardScreen() {
   const getDateLabel = (d) => {
     if (d === todayStr && isCurrentMonth)     return t('dashboard.today');
     if (d === yesterdayStr && isCurrentMonth) return t('dashboard.yesterday');
-    return new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-MR' : lang === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+    return new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
   const handleEdit   = (exp) => { setEditingExpense(exp); setShowExpenseForm(true); };
@@ -120,7 +120,7 @@ export default function DashboardScreen() {
   const PrevArrow = isRTL ? ChevronRight : ChevronLeft;
   const NextArrow = isRTL ? ChevronLeft  : ChevronRight;
 
-  const fmt = (n) => n.toLocaleString(lang === 'ar' ? 'ar-MR' : 'fr-FR', { maximumFractionDigits: 0 });
+  const fmt = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
   return (
     <div className={`pb-2 ${isDark ? 'bg-slate-900' : 'bg-slate-50'} min-h-full`}>
@@ -304,7 +304,7 @@ function TransactionRow({ expense, onEdit, onDelete, t, isDark, isRTL, lang, fmt
   const isIncome   = expense.type === 'income';
   const cat        = getCategoryById(expense.category);
   const Icon       = cat.icon;
-  const dateLabel  = new Date(expense.date).toLocaleDateString(lang === 'ar' ? 'ar-MR' : lang === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' });
+  const dateLabel  = new Date(expense.date).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' });
 
   return (
     <div className={`flex items-center gap-3 p-3.5 rounded-2xl mb-1.5 border transition-all hover:shadow-sm ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>

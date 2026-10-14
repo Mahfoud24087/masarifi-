@@ -12,6 +12,9 @@ import { askGroqAI } from '../lib/groqApi';
 const SESSIONS_STORAGE_KEY = 'masarifi_ai_chat_sessions_v1';
 const ACTIVE_SESSION_STORAGE_KEY = 'masarifi_ai_active_session_id';
 
+const toLatinDigits = (str = '') =>
+  String(str || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+
 export default function AIAdvisorModal({ isOpen, onClose }) {
   const {
     t, isDark, isRTL, lang, user,
@@ -440,7 +443,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
           id: 1,
           sender: 'ai',
           text: initialWelcome,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         }
       ]
     };
@@ -467,7 +470,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     const textToSend = (text || input).trim();
     if (!textToSend || !currentSession) return;
 
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const currentTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     const userMsg = { id: Date.now(), sender: 'user', text: textToSend, time: currentTime };
     
     const updatedMessages = [...messages, userMsg];
@@ -522,8 +525,8 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     const aiMsg = {
       id: Date.now() + 1,
       sender: 'ai',
-      text: reply,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: toLatinDigits(reply),
+      time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
     };
 
     setSessions(prev => prev.map(s => {
@@ -759,7 +762,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
 
                       // Format text nicely (handle **bold** -> semi-bold, *italics*, bullet points)
                       const renderFormattedMessage = (content = '') => {
-                        const lines = content.split('\n');
+                        const lines = toLatinDigits(content).split('\n');
                         return lines.map((line, lineIdx) => {
                           if (!line.trim()) {
                             return <div key={lineIdx} className="h-2" />;

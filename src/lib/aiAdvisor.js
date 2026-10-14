@@ -94,7 +94,7 @@ export function generateFinancialInsight({
 
   const userName = user?.name || (targetLang === 'ar' ? 'صديقي' : targetLang === 'fr' ? 'cher ami' : 'friend');
   const cur = targetLang === 'ar' ? 'أوقية' : 'MRU';
-  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString();
+  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 
   // Category totals
   const categoryTotals = {};

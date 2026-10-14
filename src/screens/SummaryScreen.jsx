@@ -57,7 +57,7 @@ export default function SummaryScreen() {
     if (filtered.length === 0) return [];
     const map = {};
     filtered.forEach((e) => {
-      const label = new Date(e.date).toLocaleDateString(isRTL ? 'ar-MR' : 'fr-FR', {
+      const label = new Date(e.date).toLocaleDateString(isRTL ? 'ar-u-nu-latn' : 'fr-FR', {
         day: 'numeric',
         month: 'short',
       });
@@ -117,7 +117,7 @@ export default function SummaryScreen() {
           <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
             <p className={`text-xs font-semibold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('summary.totalSpent')}</p>
             <p className={`text-3xl font-extrabold ${isDark ? 'text-slate-100' : 'text-slate-800'}`} dir="ltr">
-              {totalSpent.toLocaleString('ar-MR', { maximumFractionDigits: 2 })}{' '}
+              {totalSpent.toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
               <span className="text-lg font-semibold text-emerald-600">{t('common.currency')}</span>
             </p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{filtered.length} {t('summary.expenses')}</p>
@@ -134,7 +134,7 @@ export default function SummaryScreen() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v) => [`${v.toLocaleString('ar-MR')} ${t('common.currency')}`, '']}
+                  formatter={(v) => [`${v.toLocaleString('en-US')} ${t('common.currency')}`, '']}
                   contentStyle={{ background: isDark ? '#1e293b' : '#fff', border: 'none', borderRadius: 12, fontSize: 12 }}
                   labelStyle={{ color: textPrimary }}
                 />
@@ -156,7 +156,7 @@ export default function SummaryScreen() {
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: textSecondary }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: textSecondary }} axisLine={false} tickLine={false} width={40} />
                   <Tooltip
-                    formatter={(v) => [`${v.toLocaleString('ar-MR')} ${t('common.currency')}`, '']}
+                    formatter={(v) => [`${v.toLocaleString('en-US')} ${t('common.currency')}`, '']}
                     contentStyle={{ background: isDark ? '#1e293b' : '#fff', border: 'none', borderRadius: 12, fontSize: 12 }}
                   />
                   <Bar dataKey="value" fill="#10B981" radius={[6, 6, 0, 0]} />
@@ -180,7 +180,7 @@ export default function SummaryScreen() {
                     <div className="flex items-center gap-2">
                       <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{pct}%</span>
                       <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`} dir="ltr">
-                        {item.value.toLocaleString('ar-MR')} {t('common.currency')}
+                        {item.value.toLocaleString('en-US')} {t('common.currency')}
                       </span>
                     </div>
                   </div>
