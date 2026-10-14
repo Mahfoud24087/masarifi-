@@ -61,6 +61,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
   const isSpeakingRef = useRef(false);
   const isListeningRef = useRef(false);
   const voiceLanguageRef = useRef(voiceLanguage);
+  const audioRef = useRef(null);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -208,6 +209,13 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
   };
 
   const stopSpeaking = () => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      } catch {}
+    }
     if (window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel();
@@ -219,6 +227,34 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     }
   };
 
+  // Genuine language voice verification helpers
+  const isGenuineArabicVoice = (v) => {
+    if (!v) return false;
+    const l = (v.lang || '').toLowerCase();
+    const n = (v.name || '').toLowerCase();
+    return (
+      (l.startsWith('ar') || /arabic|arabe|عربي|saudi|egypt|naayf|hoda|maged|zariyah|salma|shakir|tarik|mariam|laila/i.test(n)) &&
+      !l.startsWith('fr') && !/french|français/i.test(n)
+    );
+  };
+
+  const isGenuineEnglishVoice = (v) => {
+    if (!v) return false;
+    const l = (v.lang || '').toLowerCase();
+    const n = (v.name || '').toLowerCase();
+    return (
+      (l.startsWith('en') || /english|anglais/i.test(n)) &&
+      !l.startsWith('fr') && !/french|français/i.test(n)
+    );
+  };
+
+  const isGenuineFrenchVoice = (v) => {
+    if (!v) return false;
+    const l = (v.lang || '').toLowerCase();
+    const n = (v.name || '').toLowerCase();
+    return l.startsWith('fr') || /french|français|hortense|paul|julie/i.test(n);
+  };
+
   // High-accuracy native voice selection matching language
   const getNativeVoice = (targetLangCode) => {
     if (!window.speechSynthesis) return null;
@@ -227,98 +263,124 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
 
     const prefix = targetLangCode.slice(0, 2).toLowerCase();
 
-    // Matching voices for this language
-    const matching = available.filter(v => 
-      v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(prefix)
-    );
-
-    if (matching.length === 0) {
-      // If Arabic requested, check for 'ar' anywhere in name
-      if (prefix === 'ar') {
-        const arNamed = available.find(v => /arabic|arabe|عربي|maged|hoda|naayf|zariyah|salma/i.test(v.name));
-        if (arNamed) return arNamed;
-      }
-      return null;
+    if (prefix === 'ar') {
+      const arVoices = available.filter(isGenuineArabicVoice);
+      if (arVoices.length === 0) return null;
+      return arVoices.find(v => /natural|online|google/i.test(v.name)) || arVoices[0];
     }
 
-    // 1. Natural / Neural / Google / Online high quality voices
-    const premium = matching.find(v => 
-      /natural|neural|google|online|enhanced|premium|multilingual/i.test(v.name)
-    );
-    if (premium) return premium;
+    if (prefix === 'en') {
+      const enVoices = available.filter(isGenuineEnglishVoice);
+      if (enVoices.length === 0) return null;
+      return enVoices.find(v => /natural|online|google|david|zira/i.test(v.name)) || enVoices[0];
+    }
 
-    // 2. Exact language code match (e.g. ar-SA, en-US, fr-FR)
-    const exact = matching.find(v => 
-      v.lang.toLowerCase().replace('_', '-') === targetLangCode.toLowerCase()
-    );
-    if (exact) return exact;
+    if (prefix === 'fr') {
+      const frVoices = available.filter(isGenuineFrenchVoice);
+      if (frVoices.length === 0) return null;
+      return frVoices.find(v => /natural|online|google|hortense|paul/i.test(v.name)) || frVoices[0];
+    }
 
-    return matching[0];
+    return null;
   };
 
-  // Voice speech synthesis
+  // Voice speech synthesis with guaranteed native accent
   const speakText = (text = '', onFinish = null) => {
-    if (!window.speechSynthesis) {
+    stopSpeaking();
+
+    // Clean markdown, symbols, and currency for natural speech
+    const clean = text
+      .replace(/\*\*/g, '')
+      .replace(/[*_#`~>]/g, '')
+      .replace(/MRU/g, 'أوقية')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .trim();
+
+    if (!clean) {
       if (onFinish) onFinish();
       return;
     }
-    try {
-      window.speechSynthesis.cancel();
 
-      // Clean markdown, symbols, and currency for natural speech
-      const clean = text
-        .replace(/\*\*/g, '')
-        .replace(/[*_#`~>]/g, '')
-        .replace(/MRU/g, voiceLanguage.startsWith('ar') ? 'أوقية' : voiceLanguage.startsWith('fr') ? 'Ouguiyas' : 'Ouguiya')
-        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-        .trim();
+    setLastAiSpeech(clean);
 
-      if (!clean) {
-        if (onFinish) onFinish();
-        return;
-      }
+    // 1. Detect language accurately
+    const isArabic = /[\u0600-\u06FF]/.test(clean);
+    const isEnglish = !isArabic && /\b(the|is|was|are|by|who|what|where|how|why|you|your|have|has|spent|spend|spending|money|cost|developed|built|created|student|app|application|save|saving|total|expenses|income|balance|hello|friend)\b/i.test(clean);
+    const isFrench = !isArabic && !isEnglish && /\b(bonjour|salut|oui|non|merci|dépenses|dépense|vous|votre|notre|cette|l'application|pourquoi|argent|budget|étudiant|développé|créé)\b/i.test(clean);
 
-      setLastAiSpeech(clean);
+    const targetLang = isArabic ? 'ar-SA' : isEnglish ? 'en-US' : isFrench ? 'fr-FR' : (voiceLanguage || 'en-US');
+    const targetPrefix = targetLang.slice(0, 2).toLowerCase(); // 'ar' | 'en' | 'fr'
 
-      const utterance = new SpeechSynthesisUtterance(clean);
+    // 2. Check for authentic browser voice
+    const voice = getNativeVoice(targetLang);
 
-      // Auto-detect speech language or use active voice language
-      const isArabic = /[\u0600-\u06FF]/.test(clean);
-      const isFrench = !isArabic && /\b(bonjour|salut|oui|non|merci|dépenses|dépense|vous|votre|notre|cette|l'application|pourquoi|argent|budget)\b/i.test(clean);
-      const targetLang = isArabic ? 'ar-SA' : isFrench ? 'fr-FR' : (voiceLanguage || 'en-US');
-
-      utterance.lang = targetLang;
-
-      // Assign authentic native voice
-      const voice = getNativeVoice(targetLang);
-      if (voice) {
+    // If genuine native voice exists in browser, use window.speechSynthesis
+    if (voice && (targetPrefix !== 'ar' || isGenuineArabicVoice(voice))) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.lang = targetLang;
         utterance.voice = voice;
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+          if (voiceModeActiveRef.current) setVoiceStatus('speaking');
+        };
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          if (onFinish) onFinish();
+        };
+
+        utterance.onerror = (e) => {
+          console.warn('Speech synthesis error:', e);
+          setIsSpeaking(false);
+          if (onFinish) onFinish();
+        };
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch (err) {
+        console.warn('SpeechSynthesis error, falling back to Audio TTS stream:', err);
       }
+    }
 
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
+    // 3. Fallback: High-Quality Google TTS Audio Stream
+    // Provides 100% genuine Arabic/English audio when browser lacks native voice!
+    try {
+      const langCode = targetPrefix === 'ar' ? 'ar' : targetPrefix === 'fr' ? 'fr' : 'en';
+      const cleanSnippet = clean.slice(0, 190);
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(cleanSnippet)}`;
 
-      utterance.onstart = () => {
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => {
         setIsSpeaking(true);
-        if (voiceModeActiveRef.current) {
-          setVoiceStatus('speaking');
-        }
+        if (voiceModeActiveRef.current) setVoiceStatus('speaking');
       };
 
-      utterance.onend = () => {
+      audio.onended = () => {
         setIsSpeaking(false);
+        audioRef.current = null;
         if (onFinish) onFinish();
       };
 
-      utterance.onerror = (e) => {
-        console.warn('Speech synthesis error:', e);
+      audio.onerror = (e) => {
+        console.warn('Audio TTS stream error:', e);
         setIsSpeaking(false);
+        audioRef.current = null;
         if (onFinish) onFinish();
       };
 
-      window.speechSynthesis.speak(utterance);
+      audio.play().catch((err) => {
+        console.warn('Audio play error:', err);
+        setIsSpeaking(false);
+        if (onFinish) onFinish();
+      });
     } catch (e) {
-      console.warn('Speech synthesis exception:', e);
+      console.warn('Audio TTS exception:', e);
       setIsSpeaking(false);
       if (onFinish) onFinish();
     }
