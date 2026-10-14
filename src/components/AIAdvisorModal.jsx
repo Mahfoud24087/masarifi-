@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bot, Send, Sparkles, X, User, ArrowDownCircle, Plus, 
   MessageSquare, Trash2, ChevronLeft, ChevronRight, Menu, Zap,
-  Mic, MicOff, Volume2, VolumeX, Radio
+  Mic, MicOff, Volume2, VolumeX, Radio, Square
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { generateFinancialInsight } from '../lib/aiAdvisor';
@@ -47,80 +47,288 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState('idle'); // 'idle' | 'listening' | 'thinking' | 'speaking'
+  const [voiceLanguage, setVoiceLanguage] = useState(() => (lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US'));
+  const [voices, setVoices] = useState([]);
+  const [lastUserSpeech, setLastUserSpeech] = useState('');
+  const [lastAiSpeech, setLastAiSpeech] = useState('');
+  const [micError, setMicError] = useState(null);
 
   const recognitionRef = useRef(null);
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('masarifi_gemini_api_key') || '';
+  const handleSendRef = useRef(null);
+  const voiceModeActiveRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const isListeningRef = useRef(false);
+  const voiceLanguageRef = useRef(voiceLanguage);
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Initialize Speech Recognition if supported
+  // Keep refs synchronized to prevent stale closures
+  voiceModeActiveRef.current = voiceModeActive;
+  isSpeakingRef.current = isSpeaking;
+  isListeningRef.current = isListening;
+  voiceLanguageRef.current = voiceLanguage;
+
+  // Sync default voice language when app language changes
+  useEffect(() => {
+    const code = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+    setVoiceLanguage(code);
+  }, [lang]);
+
+  // Load and cache browser voices with onvoiceschanged support
+  useEffect(() => {
+    const updateVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const loaded = window.speechSynthesis.getVoices();
+        if (loaded && loaded.length > 0) {
+          setVoices(loaded);
+        }
+      }
+    };
+
+    updateVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  // Initialize Speech Recognition once
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+      recognition.lang = voiceLanguageRef.current;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          handleSend(transcript);
+      recognition.onstart = () => {
+        setIsListening(true);
+        setMicError(null);
+        if (voiceModeActiveRef.current) {
+          setVoiceStatus('listening');
         }
       };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        // If voice mode is active and not currently thinking or speaking, stay ready
+        if (voiceModeActiveRef.current && !isSpeakingRef.current && voiceStatus !== 'thinking') {
+          // Keep idle or auto-restart
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('SpeechRecognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setMicError(lang === 'ar' ? 'يرجى السماح بالوصول للميكروفون من إعدادات المتصفح' : 'Microphone permission denied');
+        } else if (event.error === 'no-speech' && voiceModeActiveRef.current && !isSpeakingRef.current) {
+          // Restart listening after timeout in voice mode
+          setTimeout(() => {
+            if (voiceModeActiveRef.current && !isSpeakingRef.current) {
+              try {
+                recognition.start();
+              } catch {}
+            }
+          }, 400);
+        }
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript && transcript.trim()) {
+          const text = transcript.trim();
+          setLastUserSpeech(text);
+          if (voiceModeActiveRef.current) {
+            setVoiceStatus('thinking');
+          }
+          if (handleSendRef.current) {
+            handleSendRef.current(text);
+          }
+        }
+      };
+
       recognitionRef.current = recognition;
     }
+
     return () => {
       try {
         if (window.speechSynthesis) window.speechSynthesis.cancel();
       } catch {}
+      try {
+        if (recognitionRef.current) recognitionRef.current.abort();
+      } catch {}
     };
-  }, [lang]);
+  }, []);
+
+  // Update recognition language dynamically
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = voiceLanguage;
+    }
+  }, [voiceLanguage]);
+
+  // Safe voice start and stop helpers
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      alert(lang === 'ar' ? 'المتصفح لا يدعم التعرف على الصوت مباشرة' : 'Speech recognition not supported in this browser');
+      return;
+    }
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
+      recognitionRef.current.lang = voiceLanguage;
+      recognitionRef.current.start();
+      setIsListening(true);
+      setVoiceStatus('listening');
+    } catch (e) {
+      console.warn('Recognition start exception:', e);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    setIsListening(false);
+    if (voiceStatus === 'listening') {
+      setVoiceStatus('idle');
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+    setIsSpeaking(false);
+    if (voiceModeActive) {
+      setVoiceStatus('idle');
+    }
+  };
+
+  // High-accuracy native voice selection matching language
+  const getNativeVoice = (targetLangCode) => {
+    if (!window.speechSynthesis) return null;
+    const available = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
+    if (!available || available.length === 0) return null;
+
+    const prefix = targetLangCode.slice(0, 2).toLowerCase();
+
+    // Matching voices for this language
+    const matching = available.filter(v => 
+      v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(prefix)
+    );
+
+    if (matching.length === 0) {
+      // If Arabic requested, check for 'ar' anywhere in name
+      if (prefix === 'ar') {
+        const arNamed = available.find(v => /arabic|arabe|عربي|maged|hoda|naayf|zariyah|salma/i.test(v.name));
+        if (arNamed) return arNamed;
+      }
+      return null;
+    }
+
+    // 1. Natural / Neural / Google / Online high quality voices
+    const premium = matching.find(v => 
+      /natural|neural|google|online|enhanced|premium|multilingual/i.test(v.name)
+    );
+    if (premium) return premium;
+
+    // 2. Exact language code match (e.g. ar-SA, en-US, fr-FR)
+    const exact = matching.find(v => 
+      v.lang.toLowerCase().replace('_', '-') === targetLangCode.toLowerCase()
+    );
+    if (exact) return exact;
+
+    return matching[0];
+  };
 
   // Voice speech synthesis
-  const speakText = (text = '') => {
-    if (!window.speechSynthesis) return;
+  const speakText = (text = '', onFinish = null) => {
+    if (!window.speechSynthesis) {
+      if (onFinish) onFinish();
+      return;
+    }
     try {
       window.speechSynthesis.cancel();
-      // Strip markdown asterisks and emojis for speech
+
+      // Clean markdown, symbols, and currency for natural speech
       const clean = text
         .replace(/\*\*/g, '')
-        .replace(/[•\-\*]/g, '')
-        .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+        .replace(/[*_#`~>]/g, '')
+        .replace(/MRU/g, voiceLanguage.startsWith('ar') ? 'أوقية' : voiceLanguage.startsWith('fr') ? 'Ouguiyas' : 'Ouguiya')
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
         .trim();
 
+      if (!clean) {
+        if (onFinish) onFinish();
+        return;
+      }
+
+      setLastAiSpeech(clean);
+
       const utterance = new SpeechSynthesisUtterance(clean);
+
+      // Auto-detect speech language or use active voice language
       const isArabic = /[\u0600-\u06FF]/.test(clean);
-      utterance.lang = isArabic ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+      const isFrench = !isArabic && /\b(bonjour|salut|oui|non|merci|dépenses|dépense|vous|votre|notre|cette|l'application|pourquoi|argent|budget)\b/i.test(clean);
+      const targetLang = isArabic ? 'ar-SA' : isFrench ? 'fr-FR' : (voiceLanguage || 'en-US');
+
+      utterance.lang = targetLang;
+
+      // Assign authentic native voice
+      const voice = getNativeVoice(targetLang);
+      if (voice) {
+        utterance.voice = voice;
+      }
+
       utterance.rate = 1.0;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      utterance.pitch = 1.0;
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        if (voiceModeActiveRef.current) {
+          setVoiceStatus('speaking');
+        }
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        if (onFinish) onFinish();
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('Speech synthesis error:', e);
+        setIsSpeaking(false);
+        if (onFinish) onFinish();
+      };
+
       window.speechSynthesis.speak(utterance);
     } catch (e) {
-      console.warn('Speech synthesis error:', e);
+      console.warn('Speech synthesis exception:', e);
+      setIsSpeaking(false);
+      if (onFinish) onFinish();
     }
   };
 
   const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert(lang === 'ar' ? 'متصفحك لا يدعم التعرف على الصوت مباشرة.' : 'Speech recognition not supported in this browser.');
-      return;
-    }
     if (isListening) {
-      recognitionRef.current.stop();
+      stopListening();
     } else {
-      try {
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        recognitionRef.current.lang = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
-        recognitionRef.current.start();
-      } catch (err) {
-        console.warn('Recognition start error:', err);
-      }
+      startListening();
     }
   };
 
@@ -258,11 +466,6 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    // Auto-speak reply if voice mode is active
-    if (voiceModeEnabled && reply) {
-      speakText(reply);
-    }
-
     setSessions(prev => prev.map(s => {
       if (s.id === currentSession.id) {
         return {
@@ -274,7 +477,27 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     }));
 
     setIsTyping(false);
+
+    // Auto-speak reply if Voice Mode is active (ChatGPT hands-free talk loop)
+    if (voiceModeActiveRef.current && reply) {
+      setVoiceStatus('speaking');
+      speakText(reply, () => {
+        // When AI finishes speaking, reopen microphone hands-free if Voice Mode is still active
+        if (voiceModeActiveRef.current) {
+          setTimeout(() => {
+            if (voiceModeActiveRef.current && !isSpeakingRef.current) {
+              startListening();
+            }
+          }, 400);
+        }
+      });
+    }
   };
+
+  // Keep handleSendRef updated every render
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
 
   const quickCategories = lang === 'en' ? [
     { label: '👨‍💻 Who created the app?', text: 'Who created this app and why?' },
@@ -423,29 +646,31 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => {
-                  const next = !voiceModeEnabled;
-                  setVoiceModeEnabled(next);
-                  if (!next && window.speechSynthesis) {
-                    window.speechSynthesis.cancel();
-                    setIsSpeaking(false);
+                  const next = !voiceModeActive;
+                  setVoiceModeActive(next);
+                  if (next) {
+                    setTimeout(() => startListening(), 150);
+                  } else {
+                    stopListening();
+                    stopSpeaking();
                   }
                 }}
                 title={
-                  voiceModeEnabled 
-                    ? (lang === 'ar' ? 'تعطيل القراءة الصوتية' : 'Disable Voice Reading') 
-                    : (lang === 'ar' ? 'تفعيل المحادثة الصوتية التفاعلية' : 'Enable Voice Conversation')
+                  voiceModeActive 
+                    ? (lang === 'ar' ? 'العودة للمحادثة النصية' : 'Back to text chat') 
+                    : (lang === 'ar' ? 'محادثة صوتية ذكية (مثل ChatGPT)' : 'Live ChatGPT Voice Mode')
                 }
-                className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-semibold ${
-                  voiceModeEnabled
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 animate-pulse'
-                    : isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-100 text-slate-500'
+                className={`p-2 sm:px-3 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
+                  voiceModeActive
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40'
+                    : isDark ? 'hover:bg-slate-800 text-emerald-400 bg-slate-900 border border-slate-800' : 'hover:bg-slate-100 text-emerald-700 bg-emerald-50/80 border border-emerald-200'
                 }`}
               >
-                {voiceModeEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                <Radio size={17} className={voiceModeActive ? 'animate-pulse text-white' : 'text-emerald-500'} />
                 <span className="hidden sm:inline">
-                  {voiceModeEnabled 
-                    ? (lang === 'ar' ? 'صوت مفعل' : 'Voice On') 
-                    : (lang === 'ar' ? 'تحدث معي' : 'Talk Mode')}
+                  {voiceModeActive 
+                    ? (lang === 'ar' ? 'صوت مباشر' : 'Voice Live') 
+                    : (lang === 'ar' ? 'محادثة صوتية' : 'Talk Mode')}
                 </span>
               </button>
 
@@ -469,203 +694,474 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Messages Stream */}
-          <div className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${
-            isDark ? 'bg-slate-950' : 'bg-slate-50/50'
-          }`}>
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {m.sender === 'ai' && (
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                    <Bot size={18} />
-                  </div>
-                )}
-
-                {/* Auto text direction helper: inspect first letter */}
-                {(() => {
-                  const isArabicText = /[\u0600-\u06FF]/.test(m.text || '');
-                  const messageDir = isArabicText ? 'rtl' : 'ltr';
-
-                  // Format text nicely (handle **bold** -> semi-bold, *italics*, bullet points)
-                  const renderFormattedMessage = (content = '') => {
-                    const lines = content.split('\n');
-                    return lines.map((line, lineIdx) => {
-                      if (!line.trim()) {
-                        return <div key={lineIdx} className="h-2" />;
-                      }
-
-                      // Check if line is a bullet point
-                      const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('* ');
-                      const cleanLine = isBullet ? line.trim().replace(/^[•\-\*]\s*/, '') : line;
-
-                      // Parse bold tokens (**text**)
-                      const parts = cleanLine.split(/(\*\*[^*]+\*\*)/g);
-
-                      const formattedParts = parts.map((part, pIdx) => {
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                          return (
-                            <strong 
-                              key={pIdx} 
-                              className={`font-bold ${
-                                m.sender === 'user' 
-                                  ? 'text-white' 
-                                  : isDark ? 'text-emerald-300' : 'text-emerald-700'
-                              }`}
-                            >
-                              {part.slice(2, -2)}
-                            </strong>
-                          );
-                        }
-                        if (part.startsWith('*') && part.endsWith('*')) {
-                          return <em key={pIdx} className="italic opacity-90">{part.slice(1, -1)}</em>;
-                        }
-                        return part;
-                      });
-
-                      if (isBullet) {
-                        return (
-                          <div key={lineIdx} className="flex items-start gap-2 my-1">
-                            <span className={`text-xs mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>•</span>
-                            <div className="flex-1">{formattedParts}</div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <p key={lineIdx} className="my-0.5 leading-relaxed">
-                          {formattedParts}
-                        </p>
-                      );
-                    });
-                  };
-
-                  return (
-                    <div
-                      dir={messageDir}
-                      className={`max-w-[85%] sm:max-w-[78%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm transition-all font-sans ${
-                        messageDir === 'ltr' ? 'text-left' : 'text-right'
-                      } ${
-                        m.sender === 'user'
-                          ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white font-medium rounded-br-none'
-                          : isDark
-                          ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none shadow-md'
-                          : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-[0_2px_12px_rgba(0,0,0,0.04)]'
-                      }`}
-                    >
-                      <div className="space-y-0.5">{renderFormattedMessage(m.text)}</div>
-                      {m.time && (
-                        <div className={`text-[10px] mt-1.5 font-medium ${
-                          m.sender === 'user' ? 'text-white/70' : 'text-slate-400'
-                        } ${messageDir === 'ltr' ? 'text-right' : 'text-left'}`}>
-                          {m.time}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {m.sender === 'user' && (
-                  <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                    <User size={16} />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="flex gap-3 items-center">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <Bot size={18} />
-                </div>
-                <div className={`rounded-2xl px-4 py-2.5 flex items-center gap-1.5 ${
-                  isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200'
-                }`}>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick Prompts Bar */}
-          <div className={`px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar border-t ${
-            isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white/70 border-slate-100'
-          }`}>
-            {quickCategories.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSend(item.text)}
-                className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all border flex-shrink-0 ${
-                  isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-emerald-500/50'
-                    : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Floating Chat Input */}
-          <div className={`p-3.5 sm:p-4 border-t ${
-            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]'
-          }`}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex items-center gap-2.5"
-            >
-              <div className={`flex-1 flex items-center rounded-2xl border-2 transition-all px-4 py-1.5 ${
-                isDark
-                  ? 'bg-slate-800/90 border-slate-700 focus-within:border-emerald-500 text-white'
-                  : 'bg-slate-50 border-slate-300 focus-within:border-emerald-500 focus-within:bg-white text-slate-900'
-              }`}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={
-                    lang === 'ar' 
-                      ? 'اكتب سؤالك هنا باللغة العربية أو الفرنسية أو الإنجليزية...' 
-                      : lang === 'fr' 
-                      ? 'Posez votre question en français, arabe ou anglais...' 
-                      : 'Ask anything in English, Arabic, or French...'
-                  }
-                  className="w-full py-2.5 text-sm bg-transparent outline-none placeholder-slate-400 dark:placeholder-slate-500 font-medium"
-                />
+          {voiceModeActive ? (
+            /* ─── DEDICATED CHATGPT VOICE CONVERSATION SCREEN ─── */
+            <div className={`flex-1 flex flex-col justify-between p-4 sm:p-6 overflow-y-auto ${
+              isDark 
+                ? 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white' 
+                : 'bg-gradient-to-b from-slate-50 via-emerald-50/20 to-white text-slate-900'
+            }`}>
+              {/* Voice Bar Header */}
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 dark:border-slate-800 pb-3">
                 <button
-                  type="button"
-                  onClick={toggleListening}
-                  title={isListening ? (lang === 'ar' ? 'جاري الاستماع... اضغط للإيقاف' : 'Listening... click to stop') : (lang === 'ar' ? 'تحدث مع الذكاء الاصطناعي' : 'Speak to AI')}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                    isListening
-                      ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
-                      : isDark ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-slate-500 hover:text-emerald-600 hover:bg-slate-200'
+                  onClick={() => {
+                    setVoiceModeActive(false);
+                    stopListening();
+                    stopSpeaking();
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                    isDark ? 'bg-white/10 hover:bg-white/15 text-slate-200' : 'bg-slate-200/80 hover:bg-slate-300 text-slate-800'
                   }`}
                 >
-                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                  {isRTL ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+                  <span>{lang === 'ar' ? 'الدردشة النصية' : lang === 'fr' ? 'Mode Texte' : 'Text Chat'}</span>
                 </button>
+
+                {/* Spoken Language Selector Chips */}
+                <div className={`flex items-center gap-1 p-1 rounded-2xl border ${
+                  isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200'
+                }`}>
+                  {[
+                    { code: 'ar-SA', flag: '🇲🇷', label: 'العربية' },
+                    { code: 'en-US', flag: '🇬🇧', label: 'English' },
+                    { code: 'fr-FR', flag: '🇫🇷', label: 'Français' },
+                  ].map((item) => (
+                    <button
+                      key={item.code}
+                      onClick={() => {
+                        setVoiceLanguage(item.code);
+                        if (recognitionRef.current) {
+                          recognitionRef.current.lang = item.code;
+                        }
+                        if (isSpeaking) {
+                          stopSpeaking();
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                        voiceLanguage === item.code
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105'
+                          : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>{item.flag}</span>
+                      <span className="hidden sm:inline">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-bold text-emerald-500 hidden sm:inline">ChatGPT Voice</span>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
-              >
-                <Send size={19} className={isRTL ? 'rotate-180' : ''} />
-              </button>
-            </form>
-          </div>
+              {/* Center Animated Orb (ChatGPT Style) */}
+              <div className="flex-1 flex flex-col items-center justify-center my-auto py-4 sm:py-8">
+                {/* Visualizer Orb */}
+                <div 
+                  onClick={() => {
+                    if (isSpeaking) {
+                      stopSpeaking();
+                      setTimeout(() => startListening(), 200);
+                    } else if (isListening) {
+                      stopListening();
+                    } else {
+                      startListening();
+                    }
+                  }}
+                  className="relative cursor-pointer group flex items-center justify-center select-none"
+                  title={isSpeaking ? (lang === 'ar' ? 'انقر لمقاطعة الذكاء الاصطناعي والتحدث' : 'Tap to interrupt and talk') : (lang === 'ar' ? 'انقر للتحدث' : 'Tap to talk')}
+                >
+                  {/* Outer pulsating aura */}
+                  <div className={`absolute w-48 h-48 sm:w-60 sm:h-60 rounded-full blur-2xl opacity-60 transition-all duration-700 ${
+                    voiceStatus === 'listening'
+                      ? 'bg-emerald-500 animate-pulse scale-110'
+                      : voiceStatus === 'thinking'
+                      ? 'bg-amber-400 animate-pulse scale-105'
+                      : voiceStatus === 'speaking'
+                      ? 'bg-purple-500 animate-pulse scale-125'
+                      : 'bg-emerald-700/30 scale-95'
+                  }`} />
+
+                  {/* Secondary rotating ripples */}
+                  <div className={`absolute w-40 h-40 sm:w-48 sm:h-48 rounded-full border-2 border-dashed transition-all duration-1000 ${
+                    voiceStatus === 'listening'
+                      ? 'border-emerald-400/60 animate-spin scale-105'
+                      : voiceStatus === 'thinking'
+                      ? 'border-amber-300/60 animate-spin'
+                      : voiceStatus === 'speaking'
+                      ? 'border-purple-400/60 animate-spin scale-110'
+                      : 'border-slate-500/20'
+                  }`} style={{ animationDuration: '6s' }} />
+
+                  {/* Main Central Sphere */}
+                  <div className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full shadow-2xl flex flex-col items-center justify-center text-white transition-all duration-300 group-hover:scale-105 ${
+                    voiceStatus === 'listening'
+                      ? 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 shadow-emerald-500/50'
+                      : voiceStatus === 'thinking'
+                      ? 'bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 shadow-amber-500/50'
+                      : voiceStatus === 'speaking'
+                      ? 'bg-gradient-to-tr from-purple-600 via-indigo-500 to-pink-500 shadow-purple-500/50'
+                      : 'bg-gradient-to-tr from-slate-700 via-slate-600 to-slate-800 shadow-black/40'
+                  }`}>
+                    {voiceStatus === 'listening' ? (
+                      <div className="flex flex-col items-center gap-1 animate-bounce">
+                        <Mic size={34} className="text-white" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{lang === 'ar' ? 'أستمع...' : 'Listening'}</span>
+                      </div>
+                    ) : voiceStatus === 'thinking' ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <Sparkles size={34} className="text-white animate-spin" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{lang === 'ar' ? 'أفكر...' : 'Thinking'}</span>
+                      </div>
+                    ) : voiceStatus === 'speaking' ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <Volume2 size={34} className="text-white animate-pulse" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{lang === 'ar' ? 'أتحدث...' : 'Speaking'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Mic size={34} className="text-white/80" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{lang === 'ar' ? 'اضغط للتحدث' : 'Tap to speak'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Indicator Label */}
+                <div className="mt-5 text-center">
+                  <p className="text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      voiceStatus === 'listening'
+                        ? 'bg-emerald-400 animate-ping'
+                        : voiceStatus === 'thinking'
+                        ? 'bg-amber-400 animate-ping'
+                        : voiceStatus === 'speaking'
+                        ? 'bg-purple-400 animate-ping'
+                        : 'bg-slate-400'
+                    }`} />
+                    <span>
+                      {voiceStatus === 'listening'
+                        ? (lang === 'ar' ? 'أستمع إليك الآن... تفضل بالكلام' : lang === 'fr' ? 'Je vous écoute... Parlez' : 'Listening to you... Speak now')
+                        : voiceStatus === 'thinking'
+                        ? (lang === 'ar' ? 'جاري التفكير وتحضير الرد...' : lang === 'fr' ? 'Réflexion en cours...' : 'Thinking and preparing response...')
+                        : voiceStatus === 'speaking'
+                        ? (lang === 'ar' ? 'يتحدث الآن (انقر على الدائرة للمقاطعة)' : lang === 'fr' ? 'L\'IA parle (touchez pour interrompre)' : 'AI is speaking (tap orb to interrupt)')
+                        : (lang === 'ar' ? 'جاهز للاستماع إليك' : lang === 'fr' ? 'Prêt à écouter' : 'Ready to listen')}
+                    </span>
+                  </p>
+                </div>
+
+                {/* Subtitle / Live Subtitles Card */}
+                <div className={`mt-4 w-full max-w-lg rounded-2xl p-4 text-xs sm:text-sm backdrop-blur-md border ${
+                  isDark ? 'bg-slate-900/80 border-slate-800 text-slate-200' : 'bg-white/80 border-slate-200 text-slate-800 shadow-md'
+                }`}>
+                  {lastUserSpeech && (
+                    <div className="mb-2 pb-2 border-b border-inherit">
+                      <span className="font-bold text-emerald-500 block mb-0.5">{lang === 'ar' ? 'أنت:' : 'You:'}</span>
+                      <p className="leading-relaxed font-medium">{lastUserSpeech}</p>
+                    </div>
+                  )}
+
+                  {lastAiSpeech ? (
+                    <div>
+                      <span className="font-bold text-purple-400 block mb-0.5">{lang === 'ar' ? 'المستشار الذكي:' : 'AI Advisor:'}</span>
+                      <p className="leading-relaxed line-clamp-3">{lastAiSpeech}</p>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-center italic text-xs">
+                      {lang === 'ar' 
+                        ? 'تحدث بصوتك بأي لغة وسيرد عليك الذكاء الاصطناعي بنطق طبيعي أصيل.' 
+                        : 'Speak naturally in any language and the AI will reply with authentic native pronunciation.'}
+                    </p>
+                  )}
+
+                  {micError && (
+                    <p className="mt-2 text-red-400 font-bold text-center text-xs">
+                      ⚠️ {micError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Quick Prompts & Controls */}
+              <div className="space-y-3 pt-2">
+                {/* Voice quick suggestion pills */}
+                <div className="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1">
+                  {[
+                    { text: 'Who created this app and why?', ar: 'من صنع هذا التطبيق؟', fr: 'Qui a créé cette app ?' },
+                    { text: 'How can I reduce my expenses?', ar: 'كيف أقلص مصاريفي؟', fr: 'Comment réduire mes dépenses ?' },
+                    { text: 'Where did most of my money go?', ar: 'أين ذهبت أموالي هذا الشهر؟', fr: 'Où est passé mon argent ?' },
+                  ].map((q, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        const targetText = voiceLanguage.startsWith('ar') ? q.ar : voiceLanguage.startsWith('fr') ? q.fr : q.text;
+                        setLastUserSpeech(targetText);
+                        setVoiceStatus('thinking');
+                        handleSend(targetText);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
+                        isDark 
+                          ? 'bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                          : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm'
+                      }`}
+                    >
+                      {voiceLanguage.startsWith('ar') ? q.ar : voiceLanguage.startsWith('fr') ? q.fr : q.text}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Main Action Bar */}
+                <div className="flex items-center justify-center gap-3 sm:gap-4">
+                  {isSpeaking && (
+                    <button
+                      onClick={() => {
+                        stopSpeaking();
+                        setTimeout(() => startListening(), 200);
+                      }}
+                      className="px-3.5 sm:px-4 py-2.5 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold flex items-center gap-2 hover:bg-red-500/30 transition-all active:scale-95"
+                    >
+                      <Square size={14} className="fill-current" />
+                      <span>{lang === 'ar' ? 'إيقاف الكلام والتحدث' : 'Interrupt'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (isListening) {
+                        stopListening();
+                      } else {
+                        startListening();
+                      }
+                    }}
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-90 ${
+                      isListening
+                        ? 'bg-red-500 text-white shadow-red-500/30 animate-pulse'
+                        : 'bg-emerald-500 text-white shadow-emerald-500/30 hover:scale-105'
+                    }`}
+                  >
+                    {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setVoiceModeActive(false);
+                      stopListening();
+                      stopSpeaking();
+                    }}
+                    className={`px-3.5 sm:px-4 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition-all active:scale-95 ${
+                      isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 shadow-sm'
+                    }`}
+                  >
+                    <MessageSquare size={14} />
+                    <span>{lang === 'ar' ? 'الدردشة النصية' : 'Text Chat'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ─── STANDARD TEXT CHAT STREAM + INPUT ─── */
+            <>
+              {/* Messages Stream */}
+              <div className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${
+                isDark ? 'bg-slate-950' : 'bg-slate-50/50'
+              }`}>
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {m.sender === 'ai' && (
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                        <Bot size={18} />
+                      </div>
+                    )}
+
+                    {/* Auto text direction helper: inspect first letter */}
+                    {(() => {
+                      const isArabicText = /[\u0600-\u06FF]/.test(m.text || '');
+                      const messageDir = isArabicText ? 'rtl' : 'ltr';
+
+                      // Format text nicely (handle **bold** -> semi-bold, *italics*, bullet points)
+                      const renderFormattedMessage = (content = '') => {
+                        const lines = content.split('\n');
+                        return lines.map((line, lineIdx) => {
+                          if (!line.trim()) {
+                            return <div key={lineIdx} className="h-2" />;
+                          }
+
+                          // Check if line is a bullet point
+                          const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('* ');
+                          const cleanLine = isBullet ? line.trim().replace(/^[•\-\*]\s*/, '') : line;
+
+                          // Parse bold tokens (**text**)
+                          const parts = cleanLine.split(/(\*\*[^*]+\*\*)/g);
+
+                          const formattedParts = parts.map((part, pIdx) => {
+                            if (part.startsWith('**') && part.endsWith('**')) {
+                              return (
+                                <strong 
+                                  key={pIdx} 
+                                  className={`font-bold ${
+                                    m.sender === 'user' 
+                                      ? 'text-white' 
+                                      : isDark ? 'text-emerald-300' : 'text-emerald-700'
+                                  }`}
+                                >
+                                  {part.slice(2, -2)}
+                                </strong>
+                              );
+                            }
+                            if (part.startsWith('*') && part.endsWith('*')) {
+                              return <em key={pIdx} className="italic opacity-90">{part.slice(1, -1)}</em>;
+                            }
+                            return part;
+                          });
+
+                          if (isBullet) {
+                            return (
+                              <div key={lineIdx} className="flex items-start gap-2 my-1">
+                                <span className={`text-xs mt-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>•</span>
+                                <div className="flex-1">{formattedParts}</div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <p key={lineIdx} className="my-0.5 leading-relaxed">
+                              {formattedParts}
+                            </p>
+                          );
+                        });
+                      };
+
+                      return (
+                        <div
+                          dir={messageDir}
+                          className={`max-w-[85%] sm:max-w-[78%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm transition-all font-sans ${
+                            messageDir === 'ltr' ? 'text-left' : 'text-right'
+                          } ${
+                            m.sender === 'user'
+                              ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white font-medium rounded-br-none'
+                              : isDark
+                              ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none shadow-md'
+                              : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-[0_2px_12px_rgba(0,0,0,0.04)]'
+                          }`}
+                        >
+                          <div className="space-y-0.5">{renderFormattedMessage(m.text)}</div>
+                          {m.time && (
+                            <div className={`text-[10px] mt-1.5 font-medium ${
+                              m.sender === 'user' ? 'text-white/70' : 'text-slate-400'
+                            } ${messageDir === 'ltr' ? 'text-right' : 'text-left'}`}>
+                              {m.time}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {m.sender === 'user' && (
+                      <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                        <User size={16} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isTyping && (
+                  <div className="flex gap-3 items-center">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <Bot size={18} />
+                    </div>
+                    <div className={`rounded-2xl px-4 py-2.5 flex items-center gap-1.5 ${
+                      isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200'
+                    }`}>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Quick Prompts Bar */}
+              <div className={`px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar border-t ${
+                isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white/70 border-slate-100'
+              }`}>
+                {quickCategories.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(item.text)}
+                    className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all border flex-shrink-0 ${
+                      isDark
+                        ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-emerald-500/50'
+                        : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Floating Chat Input */}
+              <div className={`p-3.5 sm:p-4 border-t ${
+                isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]'
+              }`}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  className="flex items-center gap-2.5"
+                >
+                  <div className={`flex-1 flex items-center rounded-2xl border-2 transition-all px-4 py-1.5 ${
+                    isDark
+                      ? 'bg-slate-800/90 border-slate-700 focus-within:border-emerald-500 text-white'
+                      : 'bg-slate-50 border-slate-300 focus-within:border-emerald-500 focus-within:bg-white text-slate-900'
+                  }`}>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder={
+                        lang === 'ar' 
+                          ? 'اكتب سؤالك هنا باللغة العربية أو الفرنسية أو الإنجليزية...' 
+                          : lang === 'fr' 
+                          ? 'Posez votre question en français, arabe ou anglais...' 
+                          : 'Ask anything in English, Arabic, or French...'
+                      }
+                      className="w-full py-2.5 text-sm bg-transparent outline-none placeholder-slate-400 dark:placeholder-slate-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      title={isListening ? (lang === 'ar' ? 'جاري الاستماع... اضغط للإيقاف' : 'Listening... click to stop') : (lang === 'ar' ? 'تحدث مع الذكاء الاصطناعي' : 'Speak to AI')}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
+                          : isDark ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-slate-500 hover:text-emerald-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+                  >
+                    <Send size={19} className={isRTL ? 'rotate-180' : ''} />
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
