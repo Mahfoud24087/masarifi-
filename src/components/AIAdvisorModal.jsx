@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bot, Send, Sparkles, X, User, ArrowDownCircle, Plus, 
-  MessageSquare, Trash2, ChevronLeft, ChevronRight, Menu, Zap 
+  MessageSquare, Trash2, ChevronLeft, ChevronRight, Menu, Zap,
+  Mic, MicOff, Volume2, VolumeX, Radio
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { generateFinancialInsight } from '../lib/aiAdvisor';
@@ -44,10 +45,84 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
   const [showSidebar, setShowSidebar] = useState(false);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
 
+  const recognitionRef = useRef(null);
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('masarifi_gemini_api_key') || '';
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Initialize Speech Recognition if supported
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          handleSend(transcript);
+        }
+      };
+      recognitionRef.current = recognition;
+    }
+    return () => {
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      } catch {}
+    };
+  }, [lang]);
+
+  // Voice speech synthesis
+  const speakText = (text = '') => {
+    if (!window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      // Strip markdown asterisks and emojis for speech
+      const clean = text
+        .replace(/\*\*/g, '')
+        .replace(/[•\-\*]/g, '')
+        .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+        .trim();
+
+      const utterance = new SpeechSynthesisUtterance(clean);
+      const isArabic = /[\u0600-\u06FF]/.test(clean);
+      utterance.lang = isArabic ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+      utterance.rate = 1.0;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis error:', e);
+    }
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert(lang === 'ar' ? 'متصفحك لا يدعم التعرف على الصوت مباشرة.' : 'Speech recognition not supported in this browser.');
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        recognitionRef.current.lang = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+        recognitionRef.current.start();
+      } catch (err) {
+        console.warn('Recognition start error:', err);
+      }
+    }
+  };
 
   // Synchronize and persist sessions
   useEffect(() => {
@@ -183,6 +258,11 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
+    // Auto-speak reply if voice mode is active
+    if (voiceModeEnabled && reply) {
+      speakText(reply);
+    }
+
     setSessions(prev => prev.map(s => {
       if (s.id === currentSession.id) {
         return {
@@ -196,11 +276,22 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     setIsTyping(false);
   };
 
-  const quickCategories = [
+  const quickCategories = lang === 'en' ? [
+    { label: '👨‍💻 Who created the app?', text: 'Who created this app and why?' },
+    { label: '🔍 Where did my money go?', text: 'Where did most of my money go this month?' },
+    { label: '🍽️ Food spending?', text: 'How much did I spend on food this month?' },
+    { label: '💡 How to save money?', text: 'How can I reduce my spending and save money?' },
+    { label: '📊 Financial status report', text: 'Give me a complete summary of my financial status.' },
+  ] : lang === 'fr' ? [
+    { label: '👨‍💻 Qui a créé l\'application ?', text: 'Qui a créé cette application et pourquoi ?' },
+    { label: '🔍 Où est passé mon argent ?', text: 'Où est passée la majorité de mon argent ce mois-ci ?' },
+    { label: '🍽️ Dépenses nourriture ?', text: 'Combien ai-je dépensé pour la nourriture ce mois-ci ?' },
+    { label: '💡 Comment économiser ?', text: 'Comment réduire mes dépenses et économiser ce mois-ci ?' },
+    { label: '📊 Bilan financier complet', text: 'Donne-moi un résumé complet de ma situation financière.' },
+  ] : [
     { label: '👨‍💻 من صنع التطبيق؟', text: 'من صنع هذا التطبيق ومتى ولماذا؟' },
     { label: '🔍 أين ذهبت أموالي؟', text: 'أين ذهبت أغلب أموالي هذا الشهر؟' },
     { label: '🍽️ كم صرفت على الطعام؟', text: 'كم صرفت على الطعام هذا الشهر؟' },
-    { label: '🚕 كم صرفت على النقل؟', text: 'كم صرفت على المواصلات هذا الشهر؟' },
     { label: '💡 خطة تقليص المصاريف', text: 'كيف أقلص مصاريفي وأوفر قبل نهاية الشهر؟' },
     { label: '📊 تقرير وضعي المالي', text: 'أعطني ملخصاً شاملاً عن وضعي المالي' },
   ];
@@ -330,6 +421,34 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const next = !voiceModeEnabled;
+                  setVoiceModeEnabled(next);
+                  if (!next && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                    setIsSpeaking(false);
+                  }
+                }}
+                title={
+                  voiceModeEnabled 
+                    ? (lang === 'ar' ? 'تعطيل القراءة الصوتية' : 'Disable Voice Reading') 
+                    : (lang === 'ar' ? 'تفعيل المحادثة الصوتية التفاعلية' : 'Enable Voice Conversation')
+                }
+                className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-semibold ${
+                  voiceModeEnabled
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 animate-pulse'
+                    : isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-100 text-slate-500'
+                }`}
+              >
+                {voiceModeEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                <span className="hidden sm:inline">
+                  {voiceModeEnabled 
+                    ? (lang === 'ar' ? 'صوت مفعل' : 'Voice On') 
+                    : (lang === 'ar' ? 'تحدث معي' : 'Talk Mode')}
+                </span>
+              </button>
+
               <button
                 onClick={createNewChat}
                 title={lang === 'ar' ? 'محادثة جديدة' : 'New chat'}
@@ -523,6 +642,18 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
                   }
                   className="w-full py-2.5 text-sm bg-transparent outline-none placeholder-slate-400 dark:placeholder-slate-500 font-medium"
                 />
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  title={isListening ? (lang === 'ar' ? 'جاري الاستماع... اضغط للإيقاف' : 'Listening... click to stop') : (lang === 'ar' ? 'تحدث مع الذكاء الاصطناعي' : 'Speak to AI')}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    isListening
+                      ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
+                      : isDark ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-slate-500 hover:text-emerald-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                </button>
               </div>
 
               <button

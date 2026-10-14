@@ -88,8 +88,9 @@ export function generateFinancialInsight({
     }
   }
 
-  // Determine language for this turn
-  const targetLang = detectLanguage(raw, lang, lastLang);
+  // Determine language for this turn (if prompt is generic 'hello' on new chat, use app lang)
+  const isInitialLaunch = raw.toLowerCase() === 'hello' && conversationHistory.length === 0;
+  const targetLang = isInitialLaunch ? (lang || 'ar') : detectLanguage(raw, lang, lastLang);
 
   const userName = user?.name || (targetLang === 'ar' ? 'صديقي' : targetLang === 'fr' ? 'cher ami' : 'friend');
   const cur = targetLang === 'ar' ? 'أوقية' : 'MRU';
