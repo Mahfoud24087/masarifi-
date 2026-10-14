@@ -53,7 +53,7 @@ App & Developer Knowledge:
 - How to reduce spending: Suggest batching purchases, setting category limits, reducing repeated snacks/eating out, and tracking daily thresholds.
 
 User Financial Snapshot:
-- User Name: ${user?.name || 'محفوظ خيري'}
+- User Name: ${user?.name || 'User / مستخدم'}
 - Currency: Mauritanian Ouguiya (MRU / أوقية)
 - Total Income: ${totalIncome} MRU
 - Total Expenses: ${totalExpenses} MRU

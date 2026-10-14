@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, TrendingDown, ArrowLeft, ArrowRight, Info, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, TrendingDown, ArrowLeft, ArrowRight, Info } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import AboutModal from '../components/AboutModal';
 
@@ -41,12 +41,12 @@ export default function AuthScreen() {
 
   const BackArrow = isRTL ? ArrowRight : ArrowLeft;
 
-  const inputClass = `w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all border font-medium ${
+  const inputClass = `w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all border ${
     isDark
-      ? 'bg-slate-800/90 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-emerald-500'
-      : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:bg-white'
+      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-500 focus:border-emerald-500'
+      : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-emerald-400 focus:bg-white'
   }`;
-  const labelClass = `block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`;
+  const labelClass = `block text-xs font-semibold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`;
 
   const switchScreen = (s) => {
     setScreen(s);
@@ -56,55 +56,51 @@ export default function AuthScreen() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50 text-slate-900'}`}
+      className={`min-h-screen flex flex-col ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-gradient-to-br from-slate-50 to-emerald-50 text-slate-900'}`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Top Header */}
-      <div className="px-5 pt-6 pb-2 flex items-center justify-between max-w-md mx-auto w-full">
+      {/* Top Bar */}
+      <div className="px-5 pt-6 flex items-center justify-between">
         <button
           onClick={() => setScreen('landing')}
-          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-colors ${
-            isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 bg-white shadow-sm border border-slate-200'
+          className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-xl transition-colors ${
+            isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="masarifi-back-btn"
         >
-          <BackArrow size={16} />
-          <span>{t('auth.backToLanding')}</span>
+          <BackArrow size={18} />
+          {t('auth.backToLanding')}
         </button>
 
         <button
           onClick={() => setShowAbout(true)}
-          className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-            isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700' : 'bg-white text-slate-700 shadow-sm hover:bg-slate-50 border border-slate-200'
+          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-colors ${
+            isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800/60' : 'text-slate-500 hover:text-slate-800 bg-white shadow-sm border border-slate-100'
           }`}
         >
           <Info size={14} className="text-emerald-500" />
-          <span>{t('landing.aboutBtn')}</span>
+          <span>{lang === 'ar' ? 'حول التطبيق' : lang === 'fr' ? 'À propos' : 'About'}</span>
         </button>
       </div>
 
-      {/* Hero Icon & Title */}
-      <div className="px-6 pt-5 pb-6 text-center max-w-md mx-auto w-full">
+      {/* Hero Icon */}
+      <div className="px-6 pt-6 pb-8 text-center">
         <div
-          className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white"
+          className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-emerald-950/40"
           style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
         >
-          <span className="font-extrabold text-2xl">م</span>
+          <TrendingDown size={30} className="text-white" />
         </div>
-        <h1 className={`text-2xl font-black mb-1 tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h1 className={`text-2xl font-extrabold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           {isSignUp ? t('auth.createAccount') : t('auth.loginAccount')}
         </h1>
-        <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {lang === 'ar' ? 'أداة مالية صُممت للمجتمع الموريتاني' : 'Personal finance for Mauritania'}
-        </p>
+        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('appName')}</p>
       </div>
 
-      {/* Main Form Card */}
-      <div className={`mx-4 rounded-3xl p-6 sm:p-7 flex-1 max-w-md md:mx-auto w-full border shadow-xl ${
-        isDark ? 'bg-slate-800/90 border-slate-700/80' : 'bg-white border-slate-200 shadow-emerald-500/5'
-      }`}>
+      {/* Form Card */}
+      <div className={`mx-4 rounded-3xl p-6 flex-1 max-w-md md:mx-auto w-full ${isDark ? 'bg-slate-800' : 'bg-white shadow-md border border-slate-100'}`}>
         {/* Tab switcher */}
-        <div className={`flex mb-6 rounded-2xl p-1 border ${isDark ? 'bg-slate-900/80 border-slate-700/80' : 'bg-slate-100 border-slate-200/60'}`}>
+        <div className={`flex mb-6 rounded-2xl p-1 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
           {[
             { label: t('auth.signIn'), s: 'auth-signin' },
             { label: t('auth.signUp'), s: 'auth-signup' },
@@ -112,12 +108,12 @@ export default function AuthScreen() {
             <button
               key={tab.s}
               onClick={() => switchScreen(tab.s)}
-              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 screen === tab.s
-                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                  ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400'
                   : isDark
-                  ? 'text-slate-400 hover:text-slate-200'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-slate-400'
+                  : 'text-slate-500'
               }`}
               id={`masarifi-tab-${tab.s}`}
             >
@@ -137,7 +133,7 @@ export default function AuthScreen() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             id="masarifi-auth-name"
           />
-          {errors.name && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.name}</p>}
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
 
         {/* Password */}
@@ -155,17 +151,17 @@ export default function AuthScreen() {
             <button
               type="button"
               onClick={() => setShowPass(!showPass)}
-              className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1`}
+              className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400`}
             >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {errors.password && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.password}</p>}
+          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
         </div>
 
         {/* Confirm password on Sign Up */}
         {isSignUp && (
-          <div className="mb-5">
+          <div className="mb-6">
             <label className={labelClass}>{t('auth.confirmPassword')}</label>
             <div className="relative">
               <input
@@ -179,48 +175,38 @@ export default function AuthScreen() {
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1`}
+                className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400`}
               >
                 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.confirmPassword}</p>}
+            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
           </div>
         )}
 
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full py-3.5 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95 disabled:opacity-70 shadow-lg shadow-emerald-500/25 mt-2"
+          className="w-full py-4 rounded-2xl font-bold text-white text-base transition-all active:scale-95 disabled:opacity-70 mt-2"
           style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
           id="masarifi-auth-submit"
         >
           {loading ? t('common.loading') : isSignUp ? t('auth.createAccount') : t('auth.loginAccount')}
         </button>
 
-        <p className={`text-center text-xs mt-4 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-center text-sm mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {isSignUp ? t('auth.hasAccount') : t('auth.noAccount')}{' '}
           <button
             onClick={() => switchScreen(isSignUp ? 'auth-signin' : 'auth-signup')}
-            className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+            className="text-emerald-600 font-semibold hover:underline"
             id="masarifi-auth-switch"
           >
             {isSignUp ? t('auth.loginAccount') : t('auth.createAccount')}
           </button>
         </p>
-
-        {/* Bottom About Link */}
-        <div className="mt-6 pt-4 border-t border-inherit text-center text-xs text-slate-400">
-          <button
-            onClick={() => setShowAbout(true)}
-            className="hover:text-emerald-500 underline underline-offset-2 transition-colors font-semibold"
-          >
-            {t('landing.aboutBtn')} • {lang === 'ar' ? 'عن المطور والتطبيق' : 'About Developer'}
-          </button>
-        </div>
       </div>
 
-      <div className="h-6" />
+      <div className="h-8" />
 
       {/* About Modal */}
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
