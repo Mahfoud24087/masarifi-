@@ -362,8 +362,6 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  if (!isOpen) return null;
-
   const createNewChat = () => {
     const initialWelcome = generateFinancialInsight({
       prompt: 'hello',
@@ -494,10 +492,8 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     }
   };
 
-  // Keep handleSendRef updated every render
-  useEffect(() => {
-    handleSendRef.current = handleSend;
-  });
+  // Keep handleSendRef updated
+  handleSendRef.current = handleSend;
 
   const quickCategories = lang === 'en' ? [
     { label: '👨‍💻 Who created the app?', text: 'Who created this app and why?' },
@@ -518,6 +514,8 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     { label: '💡 خطة تقليص المصاريف', text: 'كيف أقلص مصاريفي وأوفر قبل نهاية الشهر؟' },
     { label: '📊 تقرير وضعي المالي', text: 'أعطني ملخصاً شاملاً عن وضعي المالي' },
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div
