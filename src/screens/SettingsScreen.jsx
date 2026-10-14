@@ -226,26 +226,14 @@ export default function SettingsScreen() {
         </button>
       </div>
 
-      {/* About & Developer */}
+      {/* About */}
       <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
         <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('settings.about')}</p>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-            <Info size={19} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className={`text-base font-extrabold ${textPri}`}>{t('appName')}</p>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                SupNum 2026
-              </span>
-            </div>
-            <p className={`text-xs ${textSec} font-semibold mt-0.5`}>{t('settings.developerTitle')}</p>
-          </div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center"><Info size={17} className="text-emerald-600" /></div>
+          <div><p className={`text-sm font-medium ${textPri}`}>{t('appName')}</p><p className={`text-xs ${textSec}`}>{t('settings.version')}</p></div>
         </div>
-        <p className={`text-xs ${textSec} leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800`}>
-          {t('settings.appDescription')}
-        </p>
+        <p className={`text-xs ${textSec} leading-relaxed`}>{t('settings.appDescription')}</p>
       </div>
 
       {/* Rate the App */}
