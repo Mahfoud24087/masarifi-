@@ -30,11 +30,13 @@ export default function AuthScreen() {
     await new Promise((r) => setTimeout(r, 200));
     let result;
     if (isSignUp) {
-      result = signUp(form.name.trim(), form.password);
-      if (!result.success && result.error === 'nameExists') setErrors({ name: t('auth.errors.nameExists') });
+      result = await signUp(form.name.trim(), form.password);
+      if (result && !result.success && result.error === 'nameExists')
+        setErrors({ name: t('auth.errors.nameExists') });
     } else {
-      result = signIn(form.name.trim(), form.password);
-      if (!result.success) setErrors({ password: t('auth.errors.invalidCredentials') });
+      result = await signIn(form.name.trim(), form.password);
+      if (result && !result.success)
+        setErrors({ password: t('auth.errors.invalidCredentials') });
     }
     setLoading(false);
   };

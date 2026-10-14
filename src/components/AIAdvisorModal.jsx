@@ -671,10 +671,22 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
           <div className={`px-4 sm:px-5 py-3.5 flex items-center justify-between border-b ${
             isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-emerald-100'
           }`}>
-            <div className="flex items-center gap-2.5">
+            {/* Left group: back + history + AI identity */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs font-semibold ${
+                  isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title={lang === 'ar' ? 'رجوع' : lang === 'fr' ? 'Retour' : 'Back'}
+              >
+                {isRTL ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                <span className="hidden sm:inline">{lang === 'ar' ? 'رجوع' : lang === 'fr' ? 'Retour' : 'Back'}</span>
+              </button>
+
               <button
                 onClick={() => setShowSidebar(p => !p)}
-                className="p-2 -mr-1 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title={lang === 'ar' ? 'سجل المحادثات' : 'History'}
               >
                 <Menu size={20} />
@@ -689,7 +701,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
 
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight truncate max-w-[160px] sm:max-w-xs">
+                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight truncate max-w-[120px] sm:max-w-xs">
                     {currentSession?.title || (lang === 'ar' ? 'مستشارك المالي الذكي' : 'AI Financial Coach')}
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -703,6 +715,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
               </div>
             </div>
 
+            {/* Right group: voice mode + new chat */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => {
@@ -742,14 +755,6 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
                 }`}
               >
                 <Plus size={19} />
-              </button>
-              <button
-                onClick={onClose}
-                className={`p-2 rounded-xl transition-colors ${
-                  isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500'
-                }`}
-              >
-                <X size={20} />
               </button>
             </div>
           </div>

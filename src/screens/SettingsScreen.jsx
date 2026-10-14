@@ -13,10 +13,10 @@ function EditProfileForm({ onClose }) {
   const { t, isDark, user, updateProfile, showToast } = useMasarifi();
   const [name, setName] = useState(user?.name || '');
   const [error, setError] = useState('');
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) { setError(t('auth.errors.required')); return; }
-    const r = updateProfile({ name: name.trim() });
-    if (r.success) { showToast('✅ ' + t('settings.profileUpdated')); onClose(); }
+    const r = await updateProfile({ name: name.trim() });
+    if (r && r.success) { showToast('✅ ' + t('settings.profileUpdated')); onClose(); }
   };
   const inp = `w-full px-4 py-3 rounded-2xl text-sm outline-none border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-100 focus:border-emerald-500' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-emerald-400'}`;
   return (
@@ -38,7 +38,7 @@ function ChangePasswordForm({ onClose }) {
   const { t, isDark, changePassword, showToast } = useMasarifi();
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' });
   const [errors, setErrors] = useState({});
-  const handleSave = () => {
+  const handleSave = async () => {
     const e = {};
     if (!form.current) e.current = t('auth.errors.required');
     if (!form.newPass) e.newPass = t('auth.errors.required');
@@ -46,8 +46,8 @@ function ChangePasswordForm({ onClose }) {
     if (form.newPass !== form.confirm) e.confirm = t('auth.errors.passwordMismatch');
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    const r = changePassword(form.current, form.newPass);
-    if (r.success) { showToast('✅ ' + t('settings.passwordChanged')); onClose(); }
+    const r = await changePassword(form.current, form.newPass);
+    if (r && r.success) { showToast('✅ ' + t('settings.passwordChanged')); onClose(); }
     else setErrors({ current: t('settings.wrongPassword') });
   };
   const inp = `w-full px-4 py-3 rounded-2xl text-sm outline-none border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-100 focus:border-emerald-500' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-emerald-400'}`;
