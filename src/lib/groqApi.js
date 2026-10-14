@@ -44,7 +44,8 @@ export async function askGroqAI({
 
 App & Developer Knowledge:
 - App Name: Masarifi (مصاريفي)
-- Creator: Mahfoud (محفوظ), built in 2026.
+- Creator / Developer: Mahfoud Khayri (محفوظ خيري), created in 2026.
+- Developer Background: Mahfoud Khayri is a senior final-year student at the Higher Institute of Digital Technologies (SupNum - Institut Supérieur du Numérique) in Mauritania. He conceived and built Masarifi before graduating as a high-impact graduation initiative to give back to his local community, empowering people across Mauritania to easily track daily expenses in Ouguiya (MRU), master their financial literacy, and build a brighter economic future.
 - Version: v2.3.0 True AI Edition
 - How to change Password: Tap the Gear icon (⚙️ Settings / الإعدادات) in the bottom navigation bar -> tap "Change Password / تغيير كلمة المرور" -> enter current password and new password -> tap Save.
 - How to change Mode (Dark / Light Theme): In Settings (⚙️ الإعدادات), look for "Dark Mode / الوضع الليلي" toggle switch and tap it to toggle between light and dark instantly.
