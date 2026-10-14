@@ -751,10 +751,11 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
                       </div>
                     )}
 
-                    {/* Auto text direction helper: inspect first letter */}
+                    {/* Auto text direction helper: check character predominance */}
                     {(() => {
-                      const isArabicText = /[\u0600-\u06FF]/.test(m.text || '');
-                      const messageDir = isArabicText ? 'rtl' : 'ltr';
+                      const arabicCount = (m.text || '').match(/[\u0600-\u06FF]/g)?.length || 0;
+                      const latinCount = (m.text || '').match(/[A-Za-z]/g)?.length || 0;
+                      const messageDir = arabicCount > latinCount ? 'rtl' : 'ltr';
 
                       // Format text nicely (handle **bold** -> semi-bold, *italics*, bullet points)
                       const renderFormattedMessage = (content = '') => {

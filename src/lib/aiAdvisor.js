@@ -171,6 +171,45 @@ export function generateFinancialInsight({
   }
 
   // =========================================================================
+  // 3b. HOW TO RATE THE APP / REVIEWS
+  // =========================================================================
+  const isAboutRating =
+    /(how (can|do) i|where can i|how to) rate/i.test(q) ||
+    /rate (the app|masarifi)|give (a rating|a review|stars)/i.test(q) ||
+    /تقييم|كيف اقيم|كيف أقيم|تقييم التطبيق|اضافة تقييم|اعطاء تقييم/.test(q) ||
+    /comment (noter|evaluer)|noter l'application|donner une note|avis/i.test(q);
+
+  if (isAboutRating) {
+    if (targetLang === 'en') {
+      return `⭐ To rate Masarifi, go to **Settings (⚙️)** in the bottom navigation bar, scroll down to **"Rate the App"**, select from 1 to 5 stars, write your thoughts, and tap **"Submit Review"**! Your review helps the community and appears on the home landing page.`;
+    }
+    if (targetLang === 'fr') {
+      return `⭐ Pour évaluer Masarifi, accédez aux **Paramètres (⚙️)** dans la barre du bas, faites défiler jusqu'à **"Évaluer l'application"**, choisissez entre 1 et 5 étoiles, écrivez votre avis et appuyez sur **"Envoyer l'avis"** !`;
+    }
+    return `⭐ لتقييم تطبيق مصاريفي، اذهب إلى **الإعدادات (⚙️)** في الشريط السفلي، ثم مرر لأسفل إلى خيار **"تقييم التطبيق"**، اختر من 1 إلى 5 نجوم واكتب تعليقك ثم اضغط **"إرسال التقييم"**! تقييمك يظهر مباشرة على الواجهة الرئيسية لمساعدة المجتمع.`;
+  }
+
+  // =========================================================================
+  // 3c. HOW TO CREATE AN ACCOUNT / SIGN UP / FOR FRIENDS
+  // =========================================================================
+  const isAboutAccount =
+    /(creat|create|register|sign up|open|make) (an |a )?(account|profil)/i.test(q) ||
+    /how (can|do) (i|my friend) (use|join|start)/i.test(q) ||
+    /my friend|friend wanna use|for my friend/i.test(q) ||
+    /انشاء حساب|تسجيل حساب|كيف اسجل|فتح حساب|صديقي|كيف يستخدم صديقي/.test(q) ||
+    /creer un compte|inscription|comment s'inscrire|mon ami/i.test(q);
+
+  if (isAboutAccount) {
+    if (targetLang === 'en') {
+      return `📝 **Creating an account is very easy and free!**\n\n• Go to the app website: **https://masarifi-nine.vercel.app/** on any phone or browser.\n• Tap **"Get Started"** or **"Sign Up"**.\n• Enter your **Full Name** and a **Password** (min 4 characters).\n• Tap **"Create Account"**.\n\nYour friend can simply open the link on their phone and create their own private account in seconds! Everything syncs securely to the cloud.`;
+    }
+    if (targetLang === 'fr') {
+      return `📝 **Créer un compte est très simple et gratuit !**\n\n• Ouvrez le site : **https://masarifi-nine.vercel.app/** sur n'importe quel téléphone.\n• Appuyez sur **"Commencer"** ou **"Créer un compte"**.\n• Saisissez votre **Nom complet** et un **Mot de passe** (min 4 caractères).\n• Appuyez sur **"Créer un compte"**.\n\nVotre ami peut ouvrir ce même lien pour créer son propre compte personnel en quelques secondes !`;
+    }
+    return `📝 **إنشاء الحساب سهل جداً ومجاني للجميع!**\n\n• افتح رابط التطبيق: **https://masarifi-nine.vercel.app/** من أي هاتف أو حاسوب.\n• اضغط على **"ابدأ الآن"** أو **"إنشاء حساب"**.\n• أدخل **الاسم الكامل** و**كلمة المرور** (4 أحرف أو أرقام على الأقل).\n• اضغط على **"إنشاء حساب"**.\n\nصديقك يمكنه ببساطة فتح الرابط نفسه على هاتفه وإنشاء حسابه الخاص في ثوانٍ، وبياناته تُحفظ بشكل آمن ومشفر!`;
+  }
+
+  // =========================================================================
   // 4. WHAT IS THIS APP / VERSION / PURPOSE
   // =========================================================================
   const isAboutAppOrVersion =
