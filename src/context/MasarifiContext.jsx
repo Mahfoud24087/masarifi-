@@ -12,6 +12,8 @@ const KEYS = {
   EXPENSES: 'masarifi_expenses',
   BUDGETS: 'masarifi_budgets',
   REVIEWS: 'masarifi_reviews',
+  TICKETS: 'masarifi_support_tickets',
+  ADMIN_LOGGED: 'masarifi_admin_logged_in',
 };
 
 const load = (key, fallback) => {
@@ -36,6 +38,9 @@ export function MasarifiProvider({ children }) {
   const [expenseVer, setExpenseVer] = useState(0);
   const [reviewVer, setReviewVer] = useState(0);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [ticketVer, setTicketVer] = useState(0);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => load(KEYS.ADMIN_LOGGED, false));
 
   // Month navigation: { year, month } 0-indexed month
   const now = new Date();
@@ -545,6 +550,185 @@ export function MasarifiProvider({ children }) {
     [reviews, currentUser]
   );
 
+  // ── Support Tickets & Admin ────────────────────────────────────────
+  const bumpTicket = useCallback(() => setTicketVer((v) => v + 1), []);
+
+  const tickets = useMemo(() => {
+    return load(KEYS.TICKETS, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketVer]);
+
+  // Fetch tickets from Supabase if configured
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    async function fetchSupabaseTickets() {
+      try {
+        const { data, error } = await supabase
+          .from('support_tickets')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const mapped = data.map((d) => ({
+            id: d.id,
+            userId: d.user_id,
+            userName: d.user_name || 'مستخدم',
+            category: d.category || 'general',
+            subject: d.subject || '',
+            message: d.message || '',
+            contact: d.contact || '',
+            status: d.status || 'new',
+            adminNotes: d.admin_notes || '',
+            createdAt: d.created_at,
+            updatedAt: d.updated_at || d.created_at,
+          }));
+          save(KEYS.TICKETS, mapped);
+          bumpTicket();
+        }
+      } catch (err) {
+        console.warn('Error fetching Supabase tickets:', err);
+      }
+    }
+    fetchSupabaseTickets();
+  }, [bumpTicket]);
+
+  const addTicket = useCallback(async ({ category, subject, message, contact }) => {
+    const all = load(KEYS.TICKETS, []);
+    const newTicket = {
+      id: genId(),
+      userId: currentUser?.id || 'anonymous',
+      userName: currentUser?.name || 'مستخدم',
+      category: category || 'general',
+      subject: (subject || '').trim(),
+      message: (message || '').trim(),
+      contact: (contact || '').trim(),
+      status: 'new', // 'new' | 'in_progress' | 'resolved'
+      adminNotes: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    all.unshift(newTicket);
+    save(KEYS.TICKETS, all);
+    bumpTicket();
+
+    // Sync to Supabase support_tickets table if available
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('support_tickets').insert([{
+          id: newTicket.id,
+          user_id: newTicket.userId,
+          user_name: newTicket.userName,
+          category: newTicket.category,
+          subject: newTicket.subject,
+          message: newTicket.message,
+          contact: newTicket.contact,
+          status: newTicket.status,
+          admin_notes: newTicket.adminNotes,
+          created_at: newTicket.createdAt,
+        }]);
+      } catch (err) {
+        console.warn('Supabase support ticket sync error:', err);
+      }
+    }
+
+    return { success: true };
+  }, [currentUser, bumpTicket]);
+
+  const updateTicketStatus = useCallback(async (ticketId, status, adminNotes = null) => {
+    const all = load(KEYS.TICKETS, []);
+    const idx = all.findIndex((t) => t.id === ticketId);
+    if (idx === -1) return { success: false };
+
+    all[idx].status = status;
+    if (adminNotes !== null) all[idx].adminNotes = adminNotes;
+    all[idx].updatedAt = new Date().toISOString();
+
+    save(KEYS.TICKETS, all);
+    bumpTicket();
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const updateData = { status, updated_at: all[idx].updatedAt };
+        if (adminNotes !== null) updateData.admin_notes = adminNotes;
+        await supabase.from('support_tickets').update(updateData).eq('id', ticketId);
+      } catch (err) {
+        console.warn('Supabase update ticket error:', err);
+      }
+    }
+
+    return { success: true };
+  }, [bumpTicket]);
+
+  const deleteTicket = useCallback(async (ticketId) => {
+    const all = load(KEYS.TICKETS, []);
+    const filtered = all.filter((t) => t.id !== ticketId);
+    save(KEYS.TICKETS, filtered);
+    bumpTicket();
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('support_tickets').delete().eq('id', ticketId);
+      } catch (err) {
+        console.warn('Supabase delete ticket error:', err);
+      }
+    }
+
+    return { success: true };
+  }, [bumpTicket]);
+
+  const verifyAdminPin = useCallback((pin) => {
+    const cleanPin = (pin || '').trim();
+    if (cleanPin === '2026') {
+      setIsAdminLoggedIn(true);
+      save(KEYS.ADMIN_LOGGED, true);
+      return { success: true };
+    }
+    return { success: false, error: 'invalidPin' };
+  }, []);
+
+  const logoutAdmin = useCallback(() => {
+    setIsAdminLoggedIn(false);
+    save(KEYS.ADMIN_LOGGED, false);
+  }, []);
+
+  // Community review moderation for admin
+  const deleteReview = useCallback(async (reviewId) => {
+    const all = load(KEYS.REVIEWS, []);
+    const filtered = all.filter((r) => r.id !== reviewId);
+    save(KEYS.REVIEWS, filtered);
+    bumpReview();
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('reviews').delete().eq('id', reviewId);
+      } catch (err) {
+        console.warn('Supabase delete review error:', err);
+      }
+    }
+    return { success: true };
+  }, [bumpReview]);
+
+  // Platform all users list (local + Supabase)
+  const [allUsersList, setAllUsersList] = useState(() => load(KEYS.USERS, []));
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    async function fetchAllProfiles() {
+      try {
+        const { data } = await supabase.from('profiles').select('id, name, created_at');
+        if (data && data.length > 0) {
+          const mapped = data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            createdAt: p.created_at,
+          }));
+          setAllUsersList(mapped);
+        }
+      } catch {}
+    }
+    fetchAllProfiles();
+  }, [currentUser]);
+
   const value = {
     lang, setLang, t, isRTL,
     theme, isDark, toggleTheme,
@@ -565,8 +749,13 @@ export function MasarifiProvider({ children }) {
     // Export
     exportToCSV,
     // Reviews
-    reviews, featuredReviews, userReview, addReview,
+    reviews, featuredReviews, userReview, addReview, deleteReview,
     showReviewModal, setShowReviewModal,
+    // Support & Admin
+    showSupportModal, setShowSupportModal,
+    tickets, addTicket, updateTicketStatus, deleteTicket,
+    isAdminLoggedIn, verifyAdminPin, logoutAdmin,
+    allUsersList,
   };
 
   return <MasarifiContext.Provider value={value}>{children}</MasarifiContext.Provider>;

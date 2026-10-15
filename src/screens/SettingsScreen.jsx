@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star } from 'lucide-react';
+import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star, MessageSquare, Shield } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { EXPENSE_CATEGORIES } from '../models/categories';
 
@@ -106,7 +106,11 @@ function BudgetsSection({ isDark, t, isRTL }) {
 }
 
 export default function SettingsScreen() {
-  const { t, isDark, isRTL, lang, setLang, toggleTheme, user, signOut, setConfirmDialog, expenses, exportToCSV, showToast, totalExpenses, setShowReviewModal, userReview } = useMasarifi();
+  const { 
+    t, isDark, isRTL, lang, setLang, toggleTheme, user, signOut, 
+    setConfirmDialog, expenses, exportToCSV, showToast, totalExpenses, 
+    setShowReviewModal, userReview, setShowSupportModal, setScreen 
+  } = useMasarifi();
   const [expanded, setExpanded] = useState(null);
   const toggle = s => setExpanded(expanded === s ? null : s);
   const Arrow = isRTL ? ChevronLeft : ChevronRight;
@@ -259,6 +263,44 @@ export default function SettingsScreen() {
             ) : (
               <p className={`text-xs ${textSec}`}>{t('review.subtitle')}</p>
             )}
+          </div>
+          <Arrow size={15} className={textSec} />
+        </button>
+      </div>
+
+      {/* Support & Feedback */}
+      <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
+        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('support.button')}</p>
+        <button
+          onClick={() => setShowSupportModal(true)}
+          className="w-full flex items-center gap-3 py-1 transition-colors hover:opacity-75"
+          id="masarifi-contact-support"
+        >
+          <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-950/50 flex items-center justify-center flex-shrink-0">
+            <MessageSquare size={17} className="text-sky-600 dark:text-sky-400" />
+          </div>
+          <div className="flex-1 text-start">
+            <p className={`text-sm font-medium ${textPri}`}>{t('support.title')}</p>
+            <p className={`text-xs ${textSec} mt-0.5`}>{t('support.subtitle')}</p>
+          </div>
+          <Arrow size={15} className={textSec} />
+        </button>
+      </div>
+
+      {/* Admin Portal Access */}
+      <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
+        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('admin.button')}</p>
+        <button
+          onClick={() => setScreen('admin')}
+          className="w-full flex items-center gap-3 py-1 transition-colors hover:opacity-75"
+          id="masarifi-open-admin"
+        >
+          <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center flex-shrink-0">
+            <Shield size={17} className="text-purple-600 dark:text-purple-400" />
+          </div>
+          <div className="flex-1 text-start">
+            <p className={`text-sm font-medium ${textPri}`}>{t('admin.title')}</p>
+            <p className={`text-xs ${textSec} mt-0.5`}>{t('admin.subtitle')}</p>
           </div>
           <Arrow size={15} className={textSec} />
         </button>

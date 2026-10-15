@@ -4,6 +4,7 @@ import BottomNavBar from '../components/BottomNavBar';
 import ExpenseFormSheet from '../components/ExpenseFormSheet';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ReviewModal from '../components/ReviewModal';
+import ContactSupportModal from '../components/ContactSupportModal';
 import InstallPrompt from '../components/InstallPrompt';
 import DashboardScreen from './DashboardScreen';
 import SummaryScreen from './SummaryScreen';
@@ -53,6 +54,7 @@ export default function AppShell() {
       <ExpenseFormSheet />
       <ConfirmDialog />
       <ReviewModal />
+      <ContactSupportModal />
       <InstallPrompt />
       <Toast />
     </div>
