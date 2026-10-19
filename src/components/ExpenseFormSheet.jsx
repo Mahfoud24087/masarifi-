@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMasarifi } from '../context/MasarifiContext';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../models/categories';
-import { X, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CUSTOM_COLOR_PALETTE, hashStringToColor } from '../models/categories';
+import { X, TrendingDown, TrendingUp, RefreshCw, Tag, Check } from 'lucide-react';
 
 export default function ExpenseFormSheet() {
   const {
@@ -19,6 +19,7 @@ export default function ExpenseFormSheet() {
   const [notes, setNotes]         = useState('');
   const [recurring, setRecurring] = useState(false);
   const [customOther, setCustomOther] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [errors, setErrors]       = useState({});
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -34,9 +35,11 @@ export default function ExpenseFormSheet() {
       if (!isKnown && editingExpense.category) {
         setCategory('other');
         setCustomOther(editingExpense.category !== 'other' ? editingExpense.category : (editingExpense.customCategory || ''));
+        setSelectedColor(editingExpense.customColor || '');
       } else {
         setCategory(editingExpense.category || (t2 === 'income' ? 'salary' : 'food'));
         setCustomOther(editingExpense.customCategory || '');
+        setSelectedColor(editingExpense.customColor || '');
       }
       setDate(editingExpense.date || new Date().toISOString().slice(0, 10));
       setNotes(editingExpense.notes || '');
@@ -44,6 +47,7 @@ export default function ExpenseFormSheet() {
     } else {
       setType('expense'); setTitle(''); setAmount(''); setCategory('food');
       setDate(new Date().toISOString().slice(0, 10)); setNotes(''); setRecurring(false); setCustomOther('');
+      setSelectedColor('');
     }
     setErrors({});
   }, [editingExpense, showExpenseForm]);
@@ -71,6 +75,7 @@ export default function ExpenseFormSheet() {
     ev.preventDefault();
     if (!validate()) return;
     const finalCategory = (category === 'other' && customOther.trim()) ? customOther.trim() : category;
+    const chosenColor = selectedColor || (customOther.trim() ? hashStringToColor(customOther.trim()).color : undefined);
     const payload = {
       title: title.trim(),
       amount: parseFloat(amount),
@@ -80,6 +85,7 @@ export default function ExpenseFormSheet() {
       type,
       recurring,
       customCategory: customOther.trim() || undefined,
+      customColor: (category === 'other' || finalCategory !== category) ? chosenColor : undefined,
     };
     if (editingExpense) { updateExpense(editingExpense.id, payload); showToast('✅ ' + t('form.update')); }
     else { addExpense(payload); showToast('✅ ' + t('form.save')); }
@@ -183,12 +189,64 @@ export default function ExpenseFormSheet() {
             {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
           </div>
 
-          {/* Optional label for "Other" */}
+          {/* Custom Category Input & Color Picker */}
           {category === 'other' && (
-            <div>
-              <label className={label}>{t('form.otherLabel')} (optional)</label>
-              <input type="text" value={customOther} onChange={(e) => setCustomOther(e.target.value)}
-                placeholder={t('form.otherPlaceholder')} className={base} id="masarifi-form-other" />
+            <div className="space-y-3 p-3.5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40">
+              <div>
+                <label className={label}>
+                  {t('form.otherLabel')} <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={customOther} 
+                  onChange={(e) => setCustomOther(e.target.value)}
+                  placeholder={t('form.otherPlaceholder')} 
+                  className={base} 
+                  id="masarifi-form-other" 
+                  autoFocus 
+                />
+              </div>
+
+              {/* Distinct Color Picker */}
+              <div>
+                <label className="block text-[11px] font-bold mb-1.5 text-slate-500 dark:text-slate-400">
+                  {isRTL ? 'اختر لوناً مميزاً لهذه الفئة:' : 'Choose a unique category color:'}
+                </label>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+                  {CUSTOM_COLOR_PALETTE.map((pal) => {
+                    const activeColor = selectedColor || (customOther.trim() ? hashStringToColor(customOther.trim()).color : CUSTOM_COLOR_PALETTE[0].color);
+                    const isChosen = activeColor === pal.color;
+                    return (
+                      <button
+                        key={pal.id}
+                        type="button"
+                        onClick={() => setSelectedColor(pal.color)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                          isChosen ? 'scale-110 ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-900 shadow-md' : 'hover:scale-105 opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: pal.color }}
+                        title={pal.id}
+                      >
+                        {isChosen && <Check size={13} className="text-white drop-shadow" strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Preview Pill */}
+              {customOther.trim() && (
+                <div className="flex items-center gap-2 pt-1 text-xs">
+                  <span className="text-slate-400 text-[11px]">{isRTL ? 'المعاينة:' : 'Preview:'}</span>
+                  <span 
+                    className="px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 shadow-sm text-white transition-all"
+                    style={{ backgroundColor: selectedColor || hashStringToColor(customOther.trim()).color }}
+                  >
+                    <Tag size={12} />
+                    <span>{customOther.trim()}</span>
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

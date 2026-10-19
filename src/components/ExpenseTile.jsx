@@ -39,14 +39,17 @@ export default function ExpenseTile({ expense, onEdit, onDelete }) {
     >
       {/* Left / Start: Badge & Title / Info */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <CategoryBadge categoryId={expense.category} size="md" />
+        <CategoryBadge categoryId={expense.category} customColor={expense.customColor} size="md" />
 
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-sm sm:text-base truncate leading-snug">
             {expense.title}
           </h4>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            <span 
+              className="font-medium"
+              style={{ color: expense.customColor || getCategoryById(expense.category).color }}
+            >
               {categoryLabel}
             </span>
             <span>•</span>

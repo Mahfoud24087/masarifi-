@@ -43,14 +43,16 @@ export default function SummaryScreen() {
   // Pie data – by category
   const pieData = useMemo(() => {
     const map = {};
+    const colorMap = {};
     filtered.forEach((e) => {
       map[e.category] = (map[e.category] || 0) + e.amount;
+      if (e.customColor) colorMap[e.category] = e.customColor;
     });
     return Object.entries(map)
       .map(([cat, value]) => {
         const trans = t(`categories.${cat}`);
         const name = trans !== `categories.${cat}` ? trans : cat;
-        return { name, value, color: getCategoryById(cat).color };
+        return { name, value, color: colorMap[cat] || getCategoryById(cat).color };
       })
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value);
