@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, TrendingDown, ArrowLeft, ArrowRight, Info } from 'lucide-react';
+import { Eye, EyeOff, TrendingDown, ArrowLeft, ArrowRight, Info, Shield } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import AboutModal from '../components/AboutModal';
 
@@ -208,7 +208,18 @@ export default function AuthScreen() {
         </p>
       </div>
 
-      <div className="h-8" />
+      {/* Discreet Admin Entry */}
+      <div className="flex items-center justify-center pb-6">
+        <button
+          onClick={() => setScreen('admin')}
+          className="flex items-center gap-1.5 text-xs text-slate-400/60 hover:text-emerald-500 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50"
+          id="masarifi-admin-login-entry"
+          title={t('admin.pinTitle')}
+        >
+          <Shield size={13} />
+          <span className="text-[11px] font-medium">{t('admin.pinTitle')}</span>
+        </button>
+      </div>
 
       {/* About Modal */}
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />

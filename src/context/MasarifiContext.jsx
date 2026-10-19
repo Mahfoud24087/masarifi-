@@ -14,6 +14,7 @@ const KEYS = {
   REVIEWS: 'masarifi_reviews',
   TICKETS: 'masarifi_support_tickets',
   ADMIN_LOGGED: 'masarifi_admin_logged_in',
+  DISMISSED_NOTIFS: 'masarifi_dismissed_ticket_notifs',
 };
 
 const load = (key, fallback) => {
@@ -677,6 +678,30 @@ export function MasarifiProvider({ children }) {
     return { success: true };
   }, [bumpTicket]);
 
+  // Track dismissed notifications for resolved tickets
+  const [dismissedTicketIds, setDismissedTicketIds] = useState(() => load(KEYS.DISMISSED_NOTIFS, []));
+
+  const dismissTicketNotification = useCallback((ticketId) => {
+    setDismissedTicketIds((prev) => {
+      if (prev.includes(ticketId)) return prev;
+      const next = [...prev, ticketId];
+      save(KEYS.DISMISSED_NOTIFS, next);
+      return next;
+    });
+  }, []);
+
+  // Tickets submitted by current user
+  const userTickets = useMemo(() => {
+    if (!currentUser) return [];
+    return tickets.filter((t) => t.userId === currentUser.id || t.userName === currentUser.name);
+  }, [tickets, currentUser]);
+
+  // Resolved tickets that user hasn't dismissed yet
+  const userResolvedTickets = useMemo(() => {
+    if (!currentUser) return [];
+    return userTickets.filter((t) => t.status === 'resolved' && !dismissedTicketIds.includes(t.id));
+  }, [userTickets, currentUser, dismissedTicketIds]);
+
   const verifyAdminPin = useCallback((pin) => {
     const cleanPin = (pin || '').trim();
     if (cleanPin === '2026') {
@@ -753,7 +778,8 @@ export function MasarifiProvider({ children }) {
     showReviewModal, setShowReviewModal,
     // Support & Admin
     showSupportModal, setShowSupportModal,
-    tickets, addTicket, updateTicketStatus, deleteTicket,
+    tickets, userTickets, userResolvedTickets, dismissTicketNotification,
+    addTicket, updateTicketStatus, deleteTicket,
     isAdminLoggedIn, verifyAdminPin, logoutAdmin,
     allUsersList,
   };

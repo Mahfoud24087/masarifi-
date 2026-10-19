@@ -287,25 +287,6 @@ export default function SettingsScreen() {
         </button>
       </div>
 
-      {/* Admin Portal Access */}
-      <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
-        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('admin.button')}</p>
-        <button
-          onClick={() => setScreen('admin')}
-          className="w-full flex items-center gap-3 py-1 transition-colors hover:opacity-75"
-          id="masarifi-open-admin"
-        >
-          <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center flex-shrink-0">
-            <Shield size={17} className="text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="flex-1 text-start">
-            <p className={`text-sm font-medium ${textPri}`}>{t('admin.title')}</p>
-            <p className={`text-xs ${textSec} mt-0.5`}>{t('admin.subtitle')}</p>
-          </div>
-          <Arrow size={15} className={textSec} />
-        </button>
-      </div>
-
       {/* Sign out */}
       <div className={`rounded-3xl overflow-hidden mb-8 ${cardBg}`}>
         <button onClick={() => setConfirmDialog({ title: t('settings.signOut'), message: t('settings.signOutConfirm'), onConfirm: signOut })}
