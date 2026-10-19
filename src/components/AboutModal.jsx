@@ -62,81 +62,107 @@ export default function AboutModal({ isOpen, onClose }) {
         </div>
 
         {/* Real Example & Problem It Solves */}
-        <div id="masarifi-about-modal" className={`p-4 sm:p-5 rounded-2xl mb-4 text-xs leading-relaxed border ${
-          isDark ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-emerald-50 border-emerald-200 text-slate-900'
-        }`} style={{ textShadow: 'none' }}>
-          <div className="flex items-center gap-2 mb-2 font-extrabold text-sm text-emerald-800 dark:text-emerald-300">
-            <HelpCircle size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-            <span style={{ textShadow: 'none' }}>
-              {lang === 'ar' 
-                ? 'لماذا وُجد تطبيق مصاريفي؟' 
-                : lang === 'fr' 
-                ? 'Pourquoi Masarifi a été créé ?' 
-                : 'Why Masarifi was created?'}
+        <div id="masarifi-about-modal" className="space-y-3 mb-4 text-xs leading-relaxed" style={{ textShadow: 'none' }}>
+          
+          {/* Card 1: The Everyday Problem */}
+          <div className={`p-4 rounded-2xl border ${
+            isDark ? 'bg-amber-950/40 border-amber-500/40 text-slate-100' : 'bg-amber-50/90 border-amber-200 text-slate-950'
+          }`}>
+            <div className="flex items-center gap-2 mb-1.5 font-black text-sm text-amber-800 dark:text-amber-300">
+              <span className="text-base">❓</span>
+              <span>
+                {lang === 'ar' 
+                  ? 'المشكلة اليومية الشائعة:' 
+                  : lang === 'fr' 
+                  ? 'Le problème quotidien :' 
+                  : 'The Common Daily Struggle:'}
+              </span>
+            </div>
+            <p className="text-sm font-extrabold text-slate-950 dark:text-white leading-snug">
+              {lang === 'ar'
+                ? '«هل شعرت يوماً أن أموالك تتلاشى وتضيع دون أن تعرف أين ذهبت؟»'
+                : lang === 'fr'
+                ? '« Avez-vous déjà eu l\'impression que votre argent s\'évapore sans savoir où il est passé ? »'
+                : '"Have you ever felt like your money simply vanished without knowing where it went?"'}
+            </p>
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-2 leading-relaxed">
+              {lang === 'ar'
+                ? 'تستلم راتبك أو دخلك، وبعد أيام قليلة تتفاجأ بأن رصيدك قارب على الصفر، وتشعر بالحسرة والندم لأنك لا تدري أين أُنفقت، وهذا الأمر يتكرر معك شهراً بعد شهر.'
+                : lang === 'fr'
+                ? 'Vous touchez votre salaire, et quelques jours plus tard, votre portefeuille est vide. Vous êtes frustré car cette situation se répète inlassablement chaque mois.'
+                : 'You receive your income, and just days later you find your wallet empty—feeling stressed and regretful because this happens month after month without knowing where it was spent.'}
+            </p>
+          </div>
+
+          {/* Card 2: The Solution (How Masarifi Solves It) */}
+          <div className={`p-4 rounded-2xl border ${
+            isDark ? 'bg-emerald-950/40 border-emerald-500/40 text-slate-100' : 'bg-emerald-50/90 border-emerald-200 text-slate-950'
+          }`}>
+            <div className="flex items-center gap-2 mb-2 font-black text-sm text-emerald-800 dark:text-emerald-300">
+              <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+              <span>
+                {lang === 'ar' 
+                  ? 'من هنا وُلدت فكرة مصاريفي:' 
+                  : lang === 'fr' 
+                  ? 'D\'où est née l\'idée de Masarifi :' 
+                  : 'Where the Masarifi Idea Came From:'}
+              </span>
+            </div>
+            <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-relaxed mb-2.5">
+              {lang === 'ar'
+                ? 'صُمم مصاريفي ليساعدك على مراقبة كل أوقية (MRU) ومعرفة أين تذهب أموالك بالتفصيل:'
+                : lang === 'fr'
+                ? 'Masarifi a été créé pour surveiller chaque Ouguiya (MRU) et savoir où va votre argent en détail :'
+                : 'Masarifi was crafted to help you watch your money and see exactly where it is going with complete details for each spending:'}
+            </p>
+
+            <ul className="space-y-2 text-xs font-bold text-slate-900 dark:text-slate-100">
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">✓</span>
+                <span>
+                  {lang === 'ar'
+                    ? 'تسجيل فوري وتصنيف دقيق لكل مصروف (طعام، نقل، فواتير، مشتريات عفوية).'
+                    : lang === 'fr'
+                    ? 'Enregistrement instantané et catégorisation précise de chaque dépense (nourriture, transport, factures).'
+                    : 'Instant tracking and categorization for every expense (food, transit, bills, daily leaks).'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-600 dark:text-amber-400 font-black">✓</span>
+                <span>
+                  {lang === 'ar'
+                    ? 'تنبيهات فورية عند وصولك إلى 80% من ميزانية أي فئة لتفادي نفاد المال قبل نهاية الشهر.'
+                    : lang === 'fr'
+                    ? 'Alertes d\'avertissement automatiques dès 80% du budget pour éviter de vous retrouver à court.'
+                    : 'Automatic early warning notifications as soon as you reach 80% of any category budget.'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">✓</span>
+                <span>
+                  {lang === 'ar'
+                    ? 'مستشار مالي ذكي بالذكاء الاصطناعي يقدم نصائح مخصصة لوقف النزيف المالي وزيادة ادخارك.'
+                    : lang === 'fr'
+                    ? 'Conseiller financier intelligent par IA avec des conseils concrets pour éliminer le gaspillage.'
+                    : 'Smart AI financial advisor providing customized advice to stop leaks and grow your savings.'}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 3: The Result */}
+          <div className={`p-3 rounded-2xl border text-center font-bold text-xs ${
+            isDark ? 'bg-slate-800 border-slate-700 text-emerald-400' : 'bg-emerald-100/70 border-emerald-300 text-emerald-950'
+          }`}>
+            <span>
+              {lang === 'ar'
+                ? '🎯 مع مصاريفي: وداعاً للحيرة وضياع المال.. تحكّم بميزانيتك براحة بال كاملة!'
+                : lang === 'fr'
+                ? '🎯 Avec Masarifi : Ne vous demandez plus où est parti votre argent. Reprenez le contrôle total !'
+                : '🎯 With Masarifi: Never wonder where your money vanished again. Total financial control!'}
             </span>
           </div>
 
-          {lang === 'ar' ? (
-            <div className="space-y-3 font-medium leading-relaxed text-slate-800 dark:text-slate-200" style={{ textShadow: 'none' }}>
-              <p>
-                <strong>«هل شعرت يوماً أن أموالك تتلاشى دون أن تدري أين ذهبت؟»</strong> تستلم راتبك أو دخلك، وبعد بضعة أيام تتفاجأ بأن رصيدك قد شارف على النفاد، وتشعر بالحسرة والحيرة لأنك لا تعرف بالضبط أين أُنفقت، وهذا الأمر يتكرر معك باستمرار كل شهر؟
-              </p>
-              <p>
-                من هذا التساؤل المؤرق وُلدت فكرة <strong>«مصاريفي»</strong>!
-              </p>
-              <p>
-                صُمم مصاريفي ليكون عينك الحارسة ومستشارك المالي اليومي؛ ليساعدك على مراقبة كل أوقية بدقة، ومعرفة أين تذهب أموالك بالتفصيل (طعام، نقل، فواتير، التزامات، أو مشتريات عفوية صغيرة تستنزف جيبك).
-              </p>
-              <p className="font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100/60 dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800">
-                ✨ مع مصاريفي: لن تضيع أموالك في المجهول بعد اليوم. ستتحكم في ميزانيتك، وتوقف الهدر المالي، وتبني مدخراتك لمستقبلك براحة بال كاملة.
-              </p>
-            </div>
-          ) : lang === 'fr' ? (
-            <div className="space-y-3 font-medium leading-relaxed text-slate-800 dark:text-slate-200" style={{ textShadow: 'none' }}>
-              <p>
-                <strong>« Avez-vous déjà eu l'impression que votre argent s'évapore sans savoir où il est passé ? »</strong> Vous touchez votre salaire, et quelques jours plus tard, vous constatez avec frustration qu'il ne reste presque rien, une situation qui se répète inlassablement chaque mois ?
-              </p>
-              <p>
-                C'est exactement de ce constat réel qu'est née l'idée de <strong>Masarifi</strong> !
-              </p>
-              <p>
-                Masarifi est votre boussole financière quotidienne : il vous permet d'enregistrer et de catégoriser chaque dépense en Ouguiya (MRU), de comprendre vos habitudes financières, d'identifier les fuites d'argent cachées et de respecter vos budgets mensuels.
-              </p>
-              <p className="font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100/60 dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800">
-                ✨ Avec Masarifi : Ne vous demandez plus où est parti votre argent. Reprenez le contrôle, éliminez le stress financier et construisez votre épargne en toute sérénité.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 font-medium leading-relaxed text-slate-800 dark:text-slate-200" style={{ textShadow: 'none' }}>
-              <p>
-                <strong>"Have you ever felt like your money simply vanished without knowing where it went?"</strong> You receive your income, and just days later you find your wallet empty—feeling stressed and regretful because this happens month after month?
-              </p>
-              <p>
-                This universal financial struggle is exactly where the idea of <strong>Masarifi</strong> comes from!
-              </p>
-              <p>
-                Masarifi was crafted to be your personal financial guardian: tracking every single Ouguiya (MRU), categorizing spending in real time (food, transit, bills, or little impulse leaks), and providing smart budgets with AI financial advice.
-              </p>
-              <p className="font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100/60 dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800">
-                ✨ With Masarifi: You'll never wonder "where did my money go?" again. Gain total financial awareness, cut unnecessary losses, and grow your savings with absolute peace of mind.
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-1.5 pt-3 mt-3 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'تتبع فوري للمصاريف والدخل بالأوقية (MRU)' : 'Instant expense & income tracking in MRU'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'ميزانيات ذكية ورسوم بيانية دقيقة' : 'Smart budgets & visual analytics'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'مستشار مالي بالذكاء الاصطناعي مخصص لك' : 'AI financial advisor tailored for you'}</span>
-            </div>
-          </div>
         </div>
 
         {/* Badges */}

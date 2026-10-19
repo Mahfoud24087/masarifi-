@@ -78,22 +78,25 @@ function BudgetNotificationBanner() {
   if (!budgetAlerts || budgetAlerts.length === 0) return null;
   const alert = budgetAlerts[0];
   const isOver = alert.isOver;
+  const remaining = Math.max(0, alert.budget - alert.spent);
+  const exceeded = Math.max(0, alert.spent - alert.budget);
+  const remainingPct = Math.max(0, 100 - alert.pct);
 
   return (
     <div className="sticky top-2 z-40 px-4 mb-2 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className={`p-4 rounded-2xl shadow-xl border flex items-start gap-3 backdrop-blur-md transition-all ${
         isOver
           ? (isDark 
-              ? 'bg-red-950/95 border-red-500/50 text-red-100 shadow-red-950/50' 
-              : 'bg-red-50/95 border-red-300 text-slate-900 shadow-red-100')
+              ? 'bg-red-950 border-red-500 text-slate-100 shadow-red-950/50' 
+              : 'bg-red-50 border-red-300 text-slate-900 shadow-red-100')
           : (isDark 
-              ? 'bg-amber-950/95 border-amber-500/50 text-amber-100 shadow-amber-950/50' 
-              : 'bg-amber-50/95 border-amber-300 text-slate-900 shadow-amber-100')
+              ? 'bg-amber-950 border-amber-500 text-slate-100 shadow-amber-950/50' 
+              : 'bg-amber-50 border-amber-300 text-slate-900 shadow-amber-100')
       }`}>
-        <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center flex-shrink-0 shadow-md ${
-          isOver ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'
+        <div className={`w-10 h-10 rounded-2xl text-white flex items-center justify-center flex-shrink-0 shadow-md ${
+          isOver ? 'bg-red-500 shadow-red-500/25' : 'bg-amber-500 shadow-amber-500/25'
         }`}>
-          {isOver ? <AlertCircle size={18} /> : <AlertTriangle size={18} />}
+          {isOver ? <AlertCircle size={20} strokeWidth={2.5} /> : <AlertTriangle size={20} strokeWidth={2.5} />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1">
@@ -101,9 +104,9 @@ function BudgetNotificationBanner() {
               <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full text-white ${
                 isOver ? 'bg-red-600' : 'bg-amber-600'
               }`}>
-                {isOver ? '100%+' : `${alert.pct}%`}
+                {isOver ? (t('budget.overLimitPill') || '100%+') : `${alert.pct}%`}
               </span>
-              <p className={`text-xs font-extrabold ${
+              <p className={`text-xs font-black ${
                 isOver ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
               }`}>
                 {isOver ? t('budget.warningOverTitle') : t('budget.warningTitle')}
@@ -114,29 +117,61 @@ function BudgetNotificationBanner() {
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 transition-colors"
               title={t('budget.dismissAlert')}
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
-          <p className="text-xs font-semibold mt-1 text-slate-800 dark:text-slate-100 leading-relaxed">
+
+          {/* Structured Financial Breakdown Box */}
+          <div className={`mt-2 p-2.5 rounded-xl border text-xs font-bold ${
+            isOver
+              ? (isDark ? 'bg-red-900/40 border-red-800 text-red-100' : 'bg-red-100 border-red-200 text-red-950')
+              : (isDark ? 'bg-amber-900/40 border-amber-800 text-amber-100' : 'bg-amber-100 border-amber-200 text-amber-950')
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold">{alert.categoryName}:</span>
+              <span dir="ltr">
+                {alert.spent.toLocaleString('en-US')} / {alert.budget.toLocaleString('en-US')} {t('common.currency')}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mt-1 pt-1 border-t border-inherit text-[11px]">
+              <span className="font-semibold">
+                {isOver ? (t('budget.amountExceeded') || 'Over Limit') : (t('budget.amountRemaining') || 'Remaining')}:
+              </span>
+              <span className="font-black text-xs" dir="ltr">
+                {isOver 
+                  ? `+${exceeded.toLocaleString('en-US')} ${t('common.currency')}`
+                  : `${remaining.toLocaleString('en-US')} ${t('common.currency')} (${remainingPct}%)`
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Clear Explanation */}
+          <p className={`text-xs mt-2 font-medium leading-relaxed ${
+            isOver ? 'text-red-900 dark:text-red-200' : 'text-amber-950 dark:text-amber-100'
+          }`}>
             {isOver 
               ? t('budget.warningOverDesc', {
                   category: alert.categoryName,
-                  spent: alert.spent.toLocaleString('en-US'),
-                  budget: alert.budget.toLocaleString('en-US'),
+                  exceeded: exceeded.toLocaleString('en-US'),
                   currency: t('common.currency'),
                 })
               : t('budget.warningReachedDesc', {
                   category: alert.categoryName,
                   pct: alert.pct,
-                  spent: alert.spent.toLocaleString('en-US'),
-                  budget: alert.budget.toLocaleString('en-US'),
+                  remaining: remaining.toLocaleString('en-US'),
+                  remainingPct,
                   currency: t('common.currency'),
                 })
             }
           </p>
-          <p className={`text-[11px] mt-1 ${isOver ? 'text-red-600 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+
+          <p className={`text-[11px] mt-1 font-semibold ${
+            isOver ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
+          }`}>
             💡 {t('budget.warningAdvice')}
           </p>
+
           <div className="flex items-center gap-3 mt-2.5">
             <button
               onClick={() => {
@@ -144,14 +179,14 @@ function BudgetNotificationBanner() {
                 dismissBudgetAlert(alert.catId, alert.threshold);
               }}
               className={`text-xs font-bold underline ${
-                isOver ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'
+                isOver ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
               }`}
             >
               {t('budget.viewBudgets')} →
             </button>
             <button
               onClick={() => dismissBudgetAlert(alert.catId, alert.threshold)}
-              className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-2 py-0.5 rounded-lg bg-black/5 dark:bg-white/5"
+              className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10"
             >
               {t('budget.dismissAlert')}
             </button>
