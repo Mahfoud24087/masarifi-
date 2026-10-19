@@ -3,41 +3,52 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { useMasarifi } from '../context/MasarifiContext';
 import { CATEGORIES, getCategoryById } from '../models/categories';
 import EmptyState from '../components/EmptyState';
+import CategoryBadge from '../components/CategoryBadge';
+import { Calendar, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const PERIODS = ['day', 'week', 'month'];
 
-// Helper to get ISO week number
-const getWeek = (date) => {
-  const thursday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 3 - ((date.getDay() + 6) % 7));
-  const weekYear = thursday.getFullYear();
-  const firstJan = new Date(weekYear, 0, 1);
-  return Math.ceil(((thursday - firstJan) / 86400000 + 1) / 7);
-};
-
-function isInPeriod(dateStr, period, viewMonth, reference) {
-  const d = new Date(dateStr);
-  if (period === 'day') {
-    const sel = new Date(reference);
-    return d.toDateString() === sel.toDateString();
-  }
-  if (period === 'week') {
-    const refWeek = getWeek(new Date(reference));
-    return getWeek(d) === refWeek && d.getFullYear() === new Date(reference).getFullYear();
-  }
-  // month – compare with viewMonth
-  return d.getMonth() === viewMonth.month && d.getFullYear() === viewMonth.year;
-}
-
 export default function SummaryScreen() {
-  const { t, isDark, isRTL, expenses, viewMonth } = useMasarifi();
-  const [period, setPeriod] = useState('month');
-  // reference date used for day/week filtering – defaults to today
+  const { t, isDark, isRTL, lang, expenses, allUserExpenses, viewMonth } = useMasarifi();
+  const [period, setPeriod] = useState('week');
+  // Day filter reference
   const [referenceDate, setReferenceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // Two dates range filter for week / custom interval
+  const [startDate, setStartDate] = useState(() => new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  const filtered = useMemo(
-    () => expenses.filter((e) => isInPeriod(e.date, period, viewMonth, referenceDate)),
-    [expenses, period, viewMonth, referenceDate]
-  );
+  const setLast7Days = () => {
+    setStartDate(new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10));
+    setEndDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const setThisWeek = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = (day + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+    setStartDate(monday.toISOString().slice(0, 10));
+    setEndDate(now.toISOString().slice(0, 10));
+  };
+
+  const filtered = useMemo(() => {
+    if (period === 'day') {
+      return (allUserExpenses || expenses)
+        .filter((e) => (e.type || 'expense') !== 'income' && e.date === referenceDate)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+    if (period === 'week') {
+      const minDate = startDate <= endDate ? startDate : endDate;
+      const maxDate = startDate <= endDate ? endDate : startDate;
+      return (allUserExpenses || expenses)
+        .filter((e) => (e.type || 'expense') !== 'income' && e.date && e.date >= minDate && e.date <= maxDate)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+    // month – compare with viewMonth
+    return expenses.filter((e) => (e.type || 'expense') !== 'income');
+  }, [allUserExpenses, expenses, period, referenceDate, startDate, endDate]);
+
   const totalSpent = filtered.reduce((s, e) => s + e.amount, 0);
 
   // Pie data – by category
@@ -58,7 +69,7 @@ export default function SummaryScreen() {
       .sort((a, b) => b.value - a.value);
   }, [filtered, t]);
 
-  // Bar data – totals per day (last 7 days of the filtered set)
+  // Bar data – totals per day
   const barData = useMemo(() => {
     if (filtered.length === 0) return [];
     const map = {};
@@ -72,7 +83,7 @@ export default function SummaryScreen() {
     return Object.entries(map)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => new Date(a.name) - new Date(b.name))
-      .slice(-7);
+      .slice(-14);
   }, [filtered, isRTL]);
 
   const textPrimary = isDark ? '#f1f5f9' : '#1e293b';
@@ -84,7 +95,7 @@ export default function SummaryScreen() {
       <h1 className={`text-xl font-extrabold mb-5 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{t('summary.title')}</h1>
 
       {/* Period selector */}
-      <div className={`flex rounded-2xl p-1 mb-5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+      <div className={`flex rounded-2xl p-1 mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         {PERIODS.map((p) => (
           <button
             key={p}
@@ -99,19 +110,76 @@ export default function SummaryScreen() {
         ))}
       </div>
 
-      {/* Reference date picker – shown for day & week */}
-      {(period === 'day' || period === 'week') && (
-        <div className={`mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-100'} p-2 rounded-xl`}>
-          <label className="block text-sm font-medium mb-1" htmlFor="reference-date">
-            {period === 'day' ? t('summary.selectDay') : t('summary.selectWeek')}
+      {/* Day picker */}
+      {period === 'day' && (
+        <div className={`mb-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border p-3.5 rounded-2xl`}>
+          <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} htmlFor="reference-date">
+            📅 {t('summary.selectDay')}
           </label>
           <input
             type="date"
             id="reference-date"
             value={referenceDate}
             onChange={(e) => setReferenceDate(e.target.value)}
-            className={`w-full px-3 py-2 rounded-md border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-white border-slate-300 text-slate-900'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+            className={`w-full px-3 py-2 rounded-xl border text-sm font-semibold ${isDark ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'} focus:outline-none focus:ring-2 focus:ring-emerald-400`}
           />
+        </div>
+      )}
+
+      {/* Week / Two Dates range selector */}
+      {period === 'week' && (
+        <div className={`mb-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border p-4 rounded-2xl space-y-3`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+              <Calendar size={14} className="text-emerald-500" />
+              {t('summary.selectWeek')}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={setLast7Days}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-all active:scale-95"
+              >
+                {t('summary.last7Days')}
+              </button>
+              <button
+                type="button"
+                onClick={setThisWeek}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-all active:scale-95"
+              >
+                {t('summary.thisWeek')}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {t('summary.dateFrom')}
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={`w-full px-2.5 py-2 rounded-xl border text-xs font-semibold ${
+                  isDark ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                } focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+              />
+            </div>
+            <div>
+              <label className={`block text-[11px] font-bold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {t('summary.dateTo')}
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className={`w-full px-2.5 py-2 rounded-xl border text-xs font-semibold ${
+                  isDark ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                } focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -196,6 +264,47 @@ export default function SummaryScreen() {
                 </div>
               );
             })}
+          </div>
+
+          {/* List of expenses between these dates */}
+          <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
+            <div className="flex items-center justify-between mb-3">
+              <p className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                {t('summary.txList')}
+              </p>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                {filtered.length} {t('summary.expenses')}
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {filtered.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                    isDark ? 'bg-slate-700/50 border-slate-700' : 'bg-slate-50 border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <CategoryBadge categoryId={item.category} size="sm" />
+                    <div className="min-w-0 flex-1 text-start">
+                      <p className={`text-xs font-bold truncate ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                        {item.title}
+                      </p>
+                      <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {new Date(item.date).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                        {item.customCategory ? ` • ${item.customCategory}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 ms-3" dir="ltr">
+                    {item.amount.toLocaleString('en-US')} {t('common.currency')}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}

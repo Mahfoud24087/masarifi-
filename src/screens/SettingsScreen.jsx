@@ -71,13 +71,14 @@ function ChangePasswordForm({ onClose }) {
 }
 
 function BudgetsSection({ isDark, t, isRTL }) {
-  const { getBudget, saveBudget } = useMasarifi();
+  const { getBudget, saveBudget, requestNotificationPermission } = useMasarifi();
   const [localBudgets, setLocalBudgets] = useState(() =>
     EXPENSE_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: String(getBudget(cat.id) || '') }), {})
   );
   const [saved, setSaved] = useState(false);
   const handleSave = () => {
     EXPENSE_CATEGORIES.forEach(cat => { if (localBudgets[cat.id] !== '') saveBudget(cat.id, parseFloat(localBudgets[cat.id]) || 0); });
+    if (requestNotificationPermission) requestNotificationPermission();
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
   const inp = `w-28 px-3 py-2 rounded-xl text-sm outline-none border text-end ${isDark ? 'bg-slate-700 border-slate-600 text-slate-100 focus:border-emerald-500' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-emerald-400'}`;
@@ -103,6 +104,14 @@ function BudgetsSection({ isDark, t, isRTL }) {
         style={{ background: saved ? '#10B981' : 'linear-gradient(135deg,#059669,#10B981)' }} id="masarifi-save-budgets">
         {saved ? '✅ Saved!' : t('budget.save')}
       </button>
+
+      {/* 80% warning note */}
+      <div className={`p-3 rounded-2xl border text-[11px] leading-relaxed flex items-start gap-2 ${
+        isDark ? 'bg-amber-950/30 border-amber-500/30 text-amber-200' : 'bg-amber-50/80 border-amber-200 text-amber-900'
+      }`}>
+        <span className="text-base flex-shrink-0">🔔</span>
+        <span>{t('budget.notificationNote')}</span>
+      </div>
     </div>
   );
 }

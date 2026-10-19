@@ -46,11 +46,11 @@ Rules:
 1. Always respond in the language used by the user (Arabic, French, or English).
 2. ALWAYS use Latin digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) even in Arabic responses. Never use Eastern Arabic numerals (٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩).
 3. NEVER mention the developer's name (Mahfoud Khayri) unless the user specifically and explicitly asks who created or built the app!
-4. Be concise, direct, helpful, and friendly.`;
+4. Completeness & Full Multi-Step Answers: Always give complete, fully finished answers. If explaining steps, tips, or guidelines (e.g., 3 étapes, 5 نصائح), explain ALL steps from start to finish without cutting off mid-sentence or stopping halfway. Helpful, friendly, thorough, and complete.`;
 
   const contents = [
     { role: 'user', parts: [{ text: systemInstruction }] },
-    { role: 'model', parts: [{ text: 'Understood. I am ready to advise concise and accurate answers.' }] }
+    { role: 'model', parts: [{ text: 'Understood. I am ready to advise concise, complete, and accurate answers.' }] }
   ];
 
   for (const msg of conversationHistory.slice(-4)) {
@@ -75,7 +75,7 @@ Rules:
           contents,
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 400,
+            maxOutputTokens: 2048,
           }
         })
       });

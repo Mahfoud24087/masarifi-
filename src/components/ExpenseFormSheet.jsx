@@ -87,8 +87,11 @@ export default function ExpenseFormSheet() {
       customCategory: customOther.trim() || undefined,
       customColor: (category === 'other' || finalCategory !== category) ? chosenColor : undefined,
     };
-    if (editingExpense) { updateExpense(editingExpense.id, payload); showToast('✅ ' + t('form.update')); }
-    else { addExpense(payload); showToast('✅ ' + t('form.save')); }
+    if (editingExpense) {
+      updateExpense(editingExpense.id, payload);
+    } else {
+      addExpense(payload);
+    }
     handleClose();
   };
 

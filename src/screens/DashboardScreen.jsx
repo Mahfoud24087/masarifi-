@@ -18,22 +18,48 @@ function StatPill({ label, value, color = 'text-slate-700', isDark }) {
 function BudgetBar({ catId, spent, budget, t, isDark }) {
   if (!budget) return null;
   const pct = Math.min((spent / budget) * 100, 100);
+  const actualPct = Math.round((spent / budget) * 100);
   const over = spent > budget;
-  const warn = pct >= 80;
+  const warn = spent >= budget * 0.8;
   const cat  = getCategoryById(catId);
   return (
-    <div className={`px-4 py-2 rounded-2xl mb-2 ${isDark ? 'bg-slate-800' : 'bg-white border border-slate-100'}`}>
-      <div className="flex items-center justify-between mb-1">
-        <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t(`categories.${catId}`)}</span>
+    <div className={`px-4 py-2.5 rounded-2xl mb-2 transition-all ${
+      over
+        ? (isDark ? 'bg-red-950/40 border border-red-500/40' : 'bg-red-50/80 border border-red-200')
+        : warn
+          ? (isDark ? 'bg-amber-950/40 border border-amber-500/40' : 'bg-amber-50/80 border border-amber-200')
+          : (isDark ? 'bg-slate-800' : 'bg-white border border-slate-100 shadow-sm')
+    }`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t(`categories.${catId}`)}</span>
+          {over ? (
+            <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-red-500 text-white">
+              {actualPct}%
+            </span>
+          ) : warn ? (
+            <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-500 text-white">
+              {actualPct}%
+            </span>
+          ) : null}
+        </div>
         <span className={`text-xs font-bold ${over ? 'text-red-500' : warn ? 'text-amber-500' : 'text-emerald-600'}`} dir="ltr">
           {spent.toLocaleString('en-US')} / {budget.toLocaleString('en-US')} {t('common.currency')}
         </span>
       </div>
-      <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+      <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
         <div className="h-1.5 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: over ? '#EF4444' : warn ? '#F59E0B' : cat.color }} />
+          style={{ width: `${pct}%`, background: over ? '#EF4444' : warn ? '#F59E0B' : (cat?.color || '#10B981') }} />
       </div>
-      {over && <p className="text-red-500 text-[10px] mt-0.5 font-semibold">{t('dashboard.overBudget')}</p>}
+      {over ? (
+        <p className="text-red-500 text-[10px] mt-1 font-semibold flex items-center gap-1">
+          <span>🚨</span> {t('dashboard.overBudget')}
+        </p>
+      ) : warn ? (
+        <p className="text-amber-500 text-[10px] mt-1 font-semibold flex items-center gap-1">
+          <span>⚠️</span> {t('dashboard.budgetWarning80')}
+        </p>
+      ) : null}
     </div>
   );
 }

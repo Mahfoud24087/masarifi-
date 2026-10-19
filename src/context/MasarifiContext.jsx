@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import translations from '../i18n/translations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { EXPENSE_CATEGORIES } from '../models/categories';
 
 const MasarifiContext = createContext(null);
 
@@ -15,6 +16,7 @@ const KEYS = {
   TICKETS: 'masarifi_support_tickets',
   ADMIN_LOGGED: 'masarifi_admin_logged_in',
   DISMISSED_NOTIFS: 'masarifi_dismissed_ticket_notifs',
+  DISMISSED_BUDGETS: 'masarifi_dismissed_budget_alerts',
 };
 
 const load = (key, fallback) => {
@@ -63,11 +65,17 @@ export function MasarifiProvider({ children }) {
   // ── Language ──────────────────────────────────────────────────────
   const setLang = useCallback((l) => { setLangState(l); save(KEYS.LANG, l); }, []);
   const isRTL   = lang === 'ar';
-  const t = useCallback((path) => {
+  const t = useCallback((path, params) => {
     const keys = path.split('.');
     let obj = translations[lang] ?? translations['ar'];
     for (const k of keys) { if (obj == null) return path; obj = obj[k]; }
-    return obj ?? path;
+    if (typeof obj !== 'string') return obj ?? path;
+    if (params && typeof params === 'object') {
+      return Object.entries(params).reduce((str, [pKey, pVal]) => {
+        return str.replaceAll(`{${pKey}}`, String(pVal));
+      }, obj);
+    }
+    return obj;
   }, [lang]);
 
   // ── Theme ─────────────────────────────────────────────────────────
@@ -82,8 +90,36 @@ export function MasarifiProvider({ children }) {
     setToast({ message, type, id: Date.now() });
   }, []);
   useEffect(() => {
-    if (toast) { const tm = setTimeout(() => setToast(null), 3000); return () => clearTimeout(tm); }
+    if (toast) { const tm = setTimeout(() => setToast(null), 3500); return () => clearTimeout(tm); }
   }, [toast]);
+
+  // ── Browser Notifications ──────────────────────────────────────────
+  const sendBrowserNotification = useCallback((title, body) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+        });
+      } catch (err) {
+        console.warn('Browser notification error:', err);
+      }
+    }
+  }, []);
+
+  const requestNotificationPermission = useCallback(async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        try {
+          return await Notification.requestPermission();
+        } catch (_) {
+          return 'denied';
+        }
+      }
+      return Notification.permission;
+    }
+    return 'unsupported';
+  }, []);
 
   // ── Auth ──────────────────────────────────────────────────────────
   const signUp = useCallback(async (name, password) => {
@@ -237,6 +273,34 @@ export function MasarifiProvider({ children }) {
     return load(key, {})[category] || 0;
   }, [getBudgetKey]);
 
+  // ── Dismissed Budget Alerts ─────────────────────────────────────
+  const [dismissedBudgetAlerts, setDismissedBudgetAlerts] = useState(() => {
+    if (!currentUser) return {};
+    return load(`${KEYS.DISMISSED_BUDGETS}_${currentUser.id}`, {});
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      setDismissedBudgetAlerts(load(`${KEYS.DISMISSED_BUDGETS}_${currentUser.id}`, {}));
+    } else {
+      setDismissedBudgetAlerts({});
+    }
+  }, [currentUser]);
+
+  const dismissBudgetAlert = useCallback((catId, threshold) => {
+    if (!currentUser) return;
+    const currentKey = `${viewMonth.year}-${viewMonth.month}`;
+    const storageKey = `${KEYS.DISMISSED_BUDGETS}_${currentUser.id}`;
+    setDismissedBudgetAlerts((prev) => {
+      const updated = {
+        ...prev,
+        [`${currentKey}_${catId}`]: threshold,
+      };
+      save(storageKey, updated);
+      return updated;
+    });
+  }, [currentUser, viewMonth]);
+
   // ── Expenses ──────────────────────────────────────────────────────
   const bump = useCallback(() => setExpenseVer((v) => v + 1), []);
 
@@ -293,6 +357,47 @@ export function MasarifiProvider({ children }) {
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [allUserExpenses, viewMonth]);
 
+  // Active budget alerts for current view month (>= 80% or >= 100%)
+  const budgetAlerts = useMemo(() => {
+    if (!currentUser) return [];
+    const currentKey = `${viewMonth.year}-${viewMonth.month}`;
+    const prefix = `${viewMonth.year}-${String(viewMonth.month + 1).padStart(2, '0')}`;
+
+    const spendPerCat = {};
+    allUserExpenses
+      .filter((e) => e.date && e.date.startsWith(prefix) && (e.type || 'expense') !== 'income')
+      .forEach((e) => {
+        spendPerCat[e.category] = (spendPerCat[e.category] || 0) + (parseFloat(e.amount) || 0);
+      });
+
+    const alerts = [];
+    EXPENSE_CATEGORIES.forEach((cat) => {
+      const b = getBudget(cat.id);
+      if (b > 0) {
+        const spent = spendPerCat[cat.id] || 0;
+        const pct = (spent / b) * 100;
+        if (pct >= 80) {
+          const threshold = pct >= 100 ? 100 : 80;
+          const dismissedThreshold = dismissedBudgetAlerts[`${currentKey}_${cat.id}`];
+          const isDismissed = dismissedThreshold >= threshold;
+          if (!isDismissed) {
+            alerts.push({
+              catId: cat.id,
+              categoryName: t(`categories.${cat.id}`),
+              spent,
+              budget: b,
+              pct: Math.round(pct),
+              isOver: pct >= 100,
+              threshold,
+            });
+          }
+        }
+      }
+    });
+
+    return alerts.sort((a, b) => (b.isOver ? 1 : 0) - (a.isOver ? 1 : 0) || b.pct - a.pct);
+  }, [currentUser, viewMonth, allUserExpenses, getBudget, dismissedBudgetAlerts, t]);
+
   const addExpense = useCallback(async (data) => {
     if (!currentUser) return;
     const id = genId();
@@ -312,7 +417,41 @@ export function MasarifiProvider({ children }) {
     save(KEYS.EXPENSES, [...all, newEntry]);
     bump();
 
-    // 2. Sync to Supabase in background
+    // 2. Real-time budget warning notification
+    if (newEntry.type === 'expense') {
+      const catBudget = getBudget(newEntry.category);
+      if (catBudget > 0) {
+        const expMonth = (newEntry.date || new Date().toISOString().slice(0, 10)).slice(0, 7);
+        const existingCatSpend = all
+          .filter((e) => e.userId === currentUser.id && e.date && e.date.startsWith(expMonth) && e.category === newEntry.category && (e.type || 'expense') !== 'income')
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const newCatSpend = existingCatSpend + newEntry.amount;
+        const pct = (newCatSpend / catBudget) * 100;
+        const catName = t(`categories.${newEntry.category}`) || newEntry.category;
+
+        if (pct >= 100) {
+          showToast(`🚨 ${t('budget.toast100')} ${catName} (${Math.round(pct)}%)`, 'error');
+          sendBrowserNotification(
+            t('budget.warningOverTitle'),
+            `${catName}: ${newCatSpend.toLocaleString('en-US')} / ${catBudget.toLocaleString('en-US')} ${t('common.currency')} (${Math.round(pct)}%)`
+          );
+        } else if (pct >= 80) {
+          showToast(`⚠️ ${t('budget.toast80')} ${catName} (${Math.round(pct)}%)`, 'warning');
+          sendBrowserNotification(
+            t('budget.warningTitle'),
+            `${catName}: ${newCatSpend.toLocaleString('en-US')} / ${catBudget.toLocaleString('en-US')} ${t('common.currency')} (${Math.round(pct)}%)`
+          );
+        } else {
+          showToast('✅ ' + t('form.save'), 'success');
+        }
+      } else {
+        showToast('✅ ' + t('form.save'), 'success');
+      }
+    } else {
+      showToast('✅ ' + t('form.save'), 'success');
+    }
+
+    // 3. Sync to Supabase in background
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('expenses').insert([{
@@ -331,7 +470,7 @@ export function MasarifiProvider({ children }) {
         console.warn('Supabase add expense error:', err);
       }
     }
-  }, [currentUser, bump]);
+  }, [currentUser, bump, getBudget, t, showToast, sendBrowserNotification]);
 
   const updateExpense = useCallback(async (id, data) => {
     const all = load(KEYS.EXPENSES, []);
@@ -349,6 +488,40 @@ export function MasarifiProvider({ children }) {
     save(KEYS.EXPENSES, all);
     bump();
 
+    // Budget warning check on update
+    if (data.type === 'expense') {
+      const catBudget = getBudget(data.category);
+      if (catBudget > 0) {
+        const expMonth = (data.date || new Date().toISOString().slice(0, 10)).slice(0, 7);
+        const otherCatSpend = all
+          .filter((e) => e.userId === currentUser.id && e.id !== id && e.date && e.date.startsWith(expMonth) && e.category === data.category && (e.type || 'expense') !== 'income')
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const newCatSpend = otherCatSpend + parseFloat(data.amount);
+        const pct = (newCatSpend / catBudget) * 100;
+        const catName = t(`categories.${data.category}`) || data.category;
+
+        if (pct >= 100) {
+          showToast(`🚨 ${t('budget.toast100')} ${catName} (${Math.round(pct)}%)`, 'error');
+          sendBrowserNotification(
+            t('budget.warningOverTitle'),
+            `${catName}: ${newCatSpend.toLocaleString('en-US')} / ${catBudget.toLocaleString('en-US')} ${t('common.currency')} (${Math.round(pct)}%)`
+          );
+        } else if (pct >= 80) {
+          showToast(`⚠️ ${t('budget.toast80')} ${catName} (${Math.round(pct)}%)`, 'warning');
+          sendBrowserNotification(
+            t('budget.warningTitle'),
+            `${catName}: ${newCatSpend.toLocaleString('en-US')} / ${catBudget.toLocaleString('en-US')} ${t('common.currency')} (${Math.round(pct)}%)`
+          );
+        } else {
+          showToast('✅ ' + t('form.update'), 'success');
+        }
+      } else {
+        showToast('✅ ' + t('form.update'), 'success');
+      }
+    } else {
+      showToast('✅ ' + t('form.update'), 'success');
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('expenses').update({
@@ -365,7 +538,7 @@ export function MasarifiProvider({ children }) {
         console.warn('Supabase update expense error:', err);
       }
     }
-  }, [bump]);
+  }, [currentUser, bump, getBudget, t, showToast, sendBrowserNotification]);
 
   const deleteExpense = useCallback(async (id) => {
     save(KEYS.EXPENSES, load(KEYS.EXPENSES, []).filter((e) => e.id !== id));
@@ -770,7 +943,7 @@ export function MasarifiProvider({ children }) {
     // Month nav
     viewMonth, goToPrevMonth, goToNextMonth, isCurrentMonth,
     // Budgets
-    budgets, saveBudget, getBudget,
+    budgets, saveBudget, getBudget, budgetAlerts, dismissBudgetAlert, requestNotificationPermission,
     // Export
     exportToCSV,
     // Reviews

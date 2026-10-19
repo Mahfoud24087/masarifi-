@@ -81,7 +81,7 @@ Rules for Responses:
 2. NUMBERS & DIGITS STRICT RULE: ALWAYS and EXCLUSIVELY use Western/Latin digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) in all your responses, even when answering in Arabic! NEVER write Eastern Arabic numerals (like ٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩). Always write numbers like: 150 أوقية, 50%, 10 مايو, 1., 2., 3.
 3. When answering in English, do NOT randomly insert Arabic words like "(مصاريفي)" or "(محفوظ خيري)" in parentheses unless asked. Keep English text purely in English so punctuation and layout remain clean and natural.
 4. Use tasteful emojis (💡, 📊, 💰, ⭐, ⚙️) to make answers clear, friendly, and structured with bullet points.
-5. Keep answers direct, accurate, and concise.`;
+5. Completeness & Multi-Step Details (CRITICAL): Always provide COMPLETE, thorough, and fully finished responses. Never cut off mid-sentence, mid-thought, or halfway through an answer. When the user asks for steps, tips, strategies, or stages (e.g. 3 étapes, 5 نصائح, steps 1, 2, 3), YOU MUST EXPLAIN AND WRITE OUT EVERY SINGLE STEP/STAGE IN FULL DETAIL from step 1 all the way to the end. Always finish your thoughts with a full final sentence and conclusion.`;
 
   // Build message sequence (limit history to last 6 messages to stay well under token limits)
   const messages = [
@@ -113,7 +113,7 @@ Rules for Responses:
           model,
           messages,
           temperature: 0.6,
-          max_tokens: 350,
+          max_tokens: 2048,
         }),
       });
 
