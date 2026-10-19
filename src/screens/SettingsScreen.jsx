@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star, MessageSquare, Shield } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { EXPENSE_CATEGORIES } from '../models/categories';
+import AboutModal from '../components/AboutModal';
+import DeveloperContactBar from '../components/DeveloperContactBar';
 
 const LANGS = [
   { code: 'ar', label: 'العربية', flag: '🇲🇷' },
@@ -112,6 +114,7 @@ export default function SettingsScreen() {
     setShowReviewModal, userReview, setShowSupportModal, setScreen 
   } = useMasarifi();
   const [expanded, setExpanded] = useState(null);
+  const [showAbout, setShowAbout] = useState(false);
   const toggle = s => setExpanded(expanded === s ? null : s);
   const Arrow = isRTL ? ChevronLeft : ChevronRight;
 
@@ -233,11 +236,20 @@ export default function SettingsScreen() {
       {/* About */}
       <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
         <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('settings.about')}</p>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center"><Info size={17} className="text-emerald-600" /></div>
-          <div><p className={`text-sm font-medium ${textPri}`}>{t('appName')}</p><p className={`text-xs ${textSec}`}>{t('settings.version')}</p></div>
-        </div>
-        <p className={`text-xs ${textSec} leading-relaxed`}>{t('settings.appDescription')}</p>
+        <button
+          onClick={() => setShowAbout(true)}
+          className="w-full flex items-center gap-3 py-1 text-start transition-colors hover:opacity-75"
+          id="masarifi-about-details-btn"
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <Info size={17} className="text-emerald-600" />
+          </div>
+          <div className="flex-1">
+            <p className={`text-sm font-medium ${textPri}`}>{t('appName')}</p>
+            <p className={`text-xs ${textSec} mt-0.5`}>{t('settings.version')} • {lang === 'ar' ? 'عرض قصة التطبيق والتفاصيل' : 'View story & details'}</p>
+          </div>
+          <Arrow size={15} className={textSec} />
+        </button>
       </div>
 
       {/* Rate the App */}
@@ -287,6 +299,11 @@ export default function SettingsScreen() {
         </button>
       </div>
 
+      {/* Direct Contact (WhatsApp & Gmail) */}
+      <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
+        <DeveloperContactBar />
+      </div>
+
       {/* Sign out */}
       <div className={`rounded-3xl overflow-hidden mb-8 ${cardBg}`}>
         <button onClick={() => setConfirmDialog({ title: t('settings.signOut'), message: t('settings.signOutConfirm'), onConfirm: signOut })}
@@ -296,6 +313,9 @@ export default function SettingsScreen() {
           <span className="text-sm font-semibold text-red-500">{t('settings.signOut')}</span>
         </button>
       </div>
+
+      {/* About Modal */}
+      <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
     </div>
   );
 }

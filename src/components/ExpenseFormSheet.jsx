@@ -29,11 +29,18 @@ export default function ExpenseFormSheet() {
       setType(t2);
       setTitle(editingExpense.title || '');
       setAmount(editingExpense.amount != null ? String(editingExpense.amount) : '');
-      setCategory(editingExpense.category || (t2 === 'income' ? 'salary' : 'food'));
+      const cats = t2 === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+      const isKnown = cats.some((c) => c.id === editingExpense.category && c.id !== 'other');
+      if (!isKnown && editingExpense.category) {
+        setCategory('other');
+        setCustomOther(editingExpense.category !== 'other' ? editingExpense.category : (editingExpense.customCategory || ''));
+      } else {
+        setCategory(editingExpense.category || (t2 === 'income' ? 'salary' : 'food'));
+        setCustomOther(editingExpense.customCategory || '');
+      }
       setDate(editingExpense.date || new Date().toISOString().slice(0, 10));
       setNotes(editingExpense.notes || '');
       setRecurring(editingExpense.recurring || false);
-      setCustomOther(editingExpense.customCategory || '');
     } else {
       setType('expense'); setTitle(''); setAmount(''); setCategory('food');
       setDate(new Date().toISOString().slice(0, 10)); setNotes(''); setRecurring(false); setCustomOther('');
@@ -63,15 +70,16 @@ export default function ExpenseFormSheet() {
   const handleSubmit = (ev) => {
     ev.preventDefault();
     if (!validate()) return;
+    const finalCategory = (category === 'other' && customOther.trim()) ? customOther.trim() : category;
     const payload = {
       title: title.trim(),
       amount: parseFloat(amount),
-      category,
+      category: finalCategory,
       date,
       notes: notes.trim(),
       type,
       recurring,
-      customCategory: category === 'other' && customOther.trim() ? customOther.trim() : undefined,
+      customCategory: customOther.trim() || undefined,
     };
     if (editingExpense) { updateExpense(editingExpense.id, payload); showToast('✅ ' + t('form.update')); }
     else { addExpense(payload); showToast('✅ ' + t('form.save')); }

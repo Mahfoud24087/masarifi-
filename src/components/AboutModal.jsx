@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, TrendingDown, ShieldCheck, Heart, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, TrendingDown, ShieldCheck, Heart, Sparkles, CheckCircle2, HelpCircle, Compass, Target } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
+import DeveloperContactBar from './DeveloperContactBar';
 
 export default function AboutModal({ isOpen, onClose }) {
   const { t, isDark, isRTL, lang } = useMasarifi();
@@ -9,12 +10,12 @@ export default function AboutModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
       dir={isRTL ? 'rtl' : 'ltr'}
       onClick={onClose}
     >
       <div
-        className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl border transition-all ${
+        className={`relative w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all max-h-[92vh] overflow-y-auto ${
           isDark 
             ? 'bg-slate-900 border-slate-800 text-slate-100' 
             : 'bg-white border-slate-200 text-slate-900'
@@ -48,7 +49,7 @@ export default function AboutModal({ isOpen, onClose }) {
           >
             <TrendingDown size={32} strokeWidth={2.2} />
           </div>
-          <h2 className="text-xl font-extrabold tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             {t('appName')}
           </h2>
           <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
@@ -56,30 +57,80 @@ export default function AboutModal({ isOpen, onClose }) {
           </p>
         </div>
 
-        {/* App Purpose Description (100% about the app, no personal names) */}
-        <div className={`p-4 rounded-2xl mb-4 text-xs leading-relaxed border ${
-          isDark ? 'bg-slate-800/80 border-slate-700/80 text-slate-300' : 'bg-slate-50 border-slate-200/80 text-slate-700'
+        {/* Real Example & Problem It Solves */}
+        <div className={`p-4 sm:p-5 rounded-2xl mb-4 text-xs leading-relaxed border ${
+          isDark ? 'bg-slate-800/80 border-slate-700/80 text-slate-300' : 'bg-emerald-50/50 border-emerald-100 text-slate-700'
         }`}>
-          <p className="mb-3 font-medium">
-            {lang === 'ar' 
-              ? 'تطبيق "مصاريفي" هو أداة مالية عصرية ومستقلة، صُممت لمساعدة أفراد المجتمع على تتبع مصاريفهم ودخلهم اليومي بالأوقية (MRU) وإدارة ميزانياتهم الشهرية بوعي ووضوح وبكل سهولة.'
-              : lang === 'fr'
-              ? 'Masarifi est une application financière moderne et indépendante, conçue pour vous aider à suivre vos dépenses et revenus quotidiens en Ouguiya (MRU) et à gérer vos budgets mensuels en toute simplicité.'
-              : 'Masarifi is a modern personal finance app designed to help you track daily expenses and income in Ouguiya (MRU) and manage monthly budgets with complete clarity and ease.'}
-          </p>
+          <div className="flex items-center gap-2 mb-2 font-extrabold text-sm text-emerald-700 dark:text-emerald-300">
+            <HelpCircle size={16} className="text-emerald-500 flex-shrink-0" />
+            <span>
+              {lang === 'ar' 
+                ? 'لماذا وُجد تطبيق مصاريفي؟' 
+                : lang === 'fr' 
+                ? 'Pourquoi Masarifi a été créé ?' 
+                : 'Why Masarifi was created?'}
+            </span>
+          </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-inherit">
+          {lang === 'ar' ? (
+            <div className="space-y-3 font-normal leading-relaxed text-slate-700 dark:text-slate-300">
+              <p>
+                <strong>«هل شعرت يوماً أن أموالك تتلاشى دون أن تدري أين ذهبت؟»</strong> تستلم راتبك أو دخلك، وبعد بضعة أيام تتفاجأ بأن رصيدك قد شارف على النفاد، وتشعر بالحسرة والحيرة لأنك لا تعرف بالضبط أين أُنفقت، وهذا الأمر يتكرر معك باستمرار كل شهر؟
+              </p>
+              <p>
+                من هذا التساؤل المؤرق وُلدت فكرة <strong>«مصاريفي»</strong>!
+              </p>
+              <p>
+                صُمم مصاريفي ليكون عينك الحارسة ومستشارك المالي اليومي؛ ليساعدك على مراقبة كل أوقية بدقة، ومعرفة أين تذهب أموالك بالتفصيل (طعام، نقل، فواتير، التزامات، أو مشتريات عفوية صغيرة تستنزف جيبك).
+              </p>
+              <p className="font-semibold text-emerald-800 dark:text-emerald-200 bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+                ✨ مع مصاريفي: لن تضيع أموالك في المجهول بعد اليوم. ستتحكم في ميزانيتك، وتوقف الهدر المالي، وتبني مدخراتك لمستقبلك براحة بال كاملة.
+              </p>
+            </div>
+          ) : lang === 'fr' ? (
+            <div className="space-y-3 font-normal leading-relaxed text-slate-700 dark:text-slate-300">
+              <p>
+                <strong>« Avez-vous déjà eu l'impression que votre argent s'évapore sans savoir où il est passé ? »</strong> Vous touchez votre salaire, et quelques jours plus tard, vous constatez avec frustration qu'il ne reste presque rien, une situation qui se répète inlassablement chaque mois ?
+              </p>
+              <p>
+                C'est exactement de ce constat réel qu'est née l'idée de <strong>Masarifi</strong> !
+              </p>
+              <p>
+                Masarifi est votre boussole financière quotidienne : il vous permet d'enregistrer et de catégoriser chaque dépense en Ouguiya (MRU), de comprendre vos habitudes financières, d'identifier les fuites d'argent cachées et de respecter vos budgets mensuels.
+              </p>
+              <p className="font-semibold text-emerald-800 dark:text-emerald-200 bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+                ✨ Avec Masarifi : Ne vous demandez plus où est parti votre argent. Reprenez le contrôle, éliminez le stress financier et construisez votre épargne en toute sérénité.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 font-normal leading-relaxed text-slate-700 dark:text-slate-300">
+              <p>
+                <strong>"Have you ever felt like your money simply vanished without knowing where it went?"</strong> You receive your income, and just days later you find your wallet empty—feeling stressed and regretful because this happens month after month?
+              </p>
+              <p>
+                This universal financial struggle is exactly where the idea of <strong>Masarifi</strong> comes from!
+              </p>
+              <p>
+                Masarifi was crafted to be your personal financial guardian: tracking every single Ouguiya (MRU), categorizing spending in real time (food, transit, bills, or little impulse leaks), and providing smart budgets with AI financial advice.
+              </p>
+              <p className="font-semibold text-emerald-800 dark:text-emerald-200 bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+                ✨ With Masarifi: You'll never wonder "where did my money go?" again. Gain total financial awareness, cut unnecessary losses, and grow your savings with absolute peace of mind.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5 pt-3 mt-3 border-t border-inherit">
             <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'تتبع فوري للمصاريف والدخل بالأوقية' : 'Instant expense & income tracking in MRU'}</span>
+              <span>{lang === 'ar' ? 'تتبع فوري للمصاريف والدخل بالأوقية (MRU)' : 'Instant expense & income tracking in MRU'}</span>
             </div>
             <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'ميزانيات شهرية ورسوم بيانية واضحة' : 'Monthly budgets & visual analytics'}</span>
+              <span>{lang === 'ar' ? 'ميزانيات ذكية ورسوم بيانية دقيقة' : 'Smart budgets & visual analytics'}</span>
             </div>
             <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 size={13} />
-              <span>{lang === 'ar' ? 'مزامنة سحابية آمنة لحسابك' : 'Secure cloud synchronization'}</span>
+              <span>{lang === 'ar' ? 'مستشار مالي بالذكاء الاصطناعي مخصص لك' : 'AI financial advisor tailored for you'}</span>
             </div>
           </div>
         </div>
@@ -100,8 +151,15 @@ export default function AboutModal({ isOpen, onClose }) {
           </div>
         </div>
 
+        {/* Direct Contact Buttons (WhatsApp & Gmail) */}
+        <div className={`p-4 rounded-2xl mb-4 border ${
+          isDark ? 'bg-slate-800/40 border-slate-800' : 'bg-slate-50 border-slate-100'
+        }`}>
+          <DeveloperContactBar />
+        </div>
+
         {/* Version */}
-        <p className="text-[11px] text-center text-slate-400 mb-4">
+        <p className="text-[11px] text-center text-slate-400 mb-4" dir="ltr">
           Masarifi v2.3.0
         </p>
 

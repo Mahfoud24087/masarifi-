@@ -21,7 +21,11 @@ export default function ExpenseTile({ expense, onEdit, onDelete }) {
     }
   }, [expense?.date, lang]);
 
-  const categoryLabel = t(`categories.${expense.category}`) || expense.category;
+  const categoryLabel = expense.customCategory || (
+    t(`categories.${expense.category}`) !== `categories.${expense.category}`
+      ? t(`categories.${expense.category}`)
+      : expense.category
+  );
   const amountFormatted = Number(expense.amount || 0).toLocaleString('en-US');
 
   return (

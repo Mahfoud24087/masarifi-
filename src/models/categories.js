@@ -22,6 +22,13 @@ export const INCOME_CATEGORIES = [
 export const CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES.filter(c => c.id !== 'other')];
 
 export const getCategoryById = (id) =>
-  CATEGORIES.find((c) => c.id === id) || EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1];
+  CATEGORIES.find((c) => c.id === id) || {
+    id: id || 'other',
+    icon: MoreHorizontal,
+    color: '#059669',
+    bg: 'bg-emerald-100 dark:bg-emerald-950/50',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    border: 'border-emerald-200 dark:border-emerald-800',
+  };
 
 export default EXPENSE_CATEGORIES;

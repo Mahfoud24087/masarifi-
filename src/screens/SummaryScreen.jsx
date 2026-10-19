@@ -47,7 +47,11 @@ export default function SummaryScreen() {
       map[e.category] = (map[e.category] || 0) + e.amount;
     });
     return Object.entries(map)
-      .map(([cat, value]) => ({ name: t(`categories.${cat}`), value, color: getCategoryById(cat).color }))
+      .map(([cat, value]) => {
+        const trans = t(`categories.${cat}`);
+        const name = trans !== `categories.${cat}` ? trans : cat;
+        return { name, value, color: getCategoryById(cat).color };
+      })
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [filtered, t]);

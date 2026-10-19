@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, TrendingDown, ArrowLeft, ArrowRight, Info, Shield } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import AboutModal from '../components/AboutModal';
+import DeveloperContactBar from '../components/DeveloperContactBar';
 
 export default function AuthScreen() {
   const { t, isDark, isRTL, signUp, signIn, screen, setScreen, lang } = useMasarifi();
@@ -206,6 +207,11 @@ export default function AuthScreen() {
             {isSignUp ? t('auth.loginAccount') : t('auth.createAccount')}
           </button>
         </p>
+      </div>
+
+      {/* Developer Contact Bar (WhatsApp & Gmail) */}
+      <div className="my-5">
+        <DeveloperContactBar />
       </div>
 
       {/* Discreet Admin Entry */}

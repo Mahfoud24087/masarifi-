@@ -3,6 +3,7 @@ import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare,
 import { useMasarifi } from '../context/MasarifiContext';
 import InstallPrompt from '../components/InstallPrompt';
 import AboutModal from '../components/AboutModal';
+import DeveloperContactBar from '../components/DeveloperContactBar';
 
 const LANGS = [
   { code: 'ar', label: 'العربية', flag: '🇲🇷' },
@@ -213,6 +214,11 @@ export default function LandingScreen() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Developer Contact Bar (WhatsApp & Gmail) */}
+      <div className="mb-6 px-4">
+        <DeveloperContactBar />
       </div>
 
       {/* Footer */}
