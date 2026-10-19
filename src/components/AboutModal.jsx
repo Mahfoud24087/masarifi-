@@ -65,10 +65,17 @@ export default function AboutModal({ isOpen, onClose }) {
         <div id="masarifi-about-modal" className="space-y-3 mb-4 text-xs leading-relaxed" style={{ textShadow: 'none' }}>
           
           {/* Card 1: The Everyday Problem */}
-          <div className={`p-4 rounded-2xl border ${
-            isDark ? 'bg-amber-950/40 border-amber-500/40 text-slate-100' : 'bg-amber-50/90 border-amber-200 text-slate-950'
-          }`}>
-            <div className="flex items-center gap-2 mb-1.5 font-black text-sm text-amber-800 dark:text-amber-300">
+          <div 
+            className="p-4 rounded-2xl border"
+            style={{
+              backgroundColor: isDark ? 'rgba(69, 26, 3, 0.4)' : '#fffbeb',
+              borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#fde68a',
+            }}
+          >
+            <div 
+              className="flex items-center gap-2 mb-2 font-black text-sm"
+              style={{ color: isDark ? '#fbbf24' : '#b45309' }}
+            >
               <span className="text-base">❓</span>
               <span>
                 {lang === 'ar' 
@@ -78,14 +85,20 @@ export default function AboutModal({ isOpen, onClose }) {
                   : 'The Common Daily Struggle:'}
               </span>
             </div>
-            <p className="text-sm font-extrabold text-slate-950 dark:text-white leading-snug">
+            <p 
+              className="text-sm font-extrabold leading-snug mb-2"
+              style={{ color: isDark ? '#ffffff' : '#0f172a' }}
+            >
               {lang === 'ar'
                 ? '«هل شعرت يوماً أن أموالك تتلاشى وتضيع دون أن تعرف أين ذهبت؟»'
                 : lang === 'fr'
                 ? '« Avez-vous déjà eu l\'impression que votre argent s\'évapore sans savoir où il est passé ? »'
                 : '"Have you ever felt like your money simply vanished without knowing where it went?"'}
             </p>
-            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-2 leading-relaxed">
+            <p 
+              className="text-xs font-semibold leading-relaxed"
+              style={{ color: isDark ? '#e2e8f0' : '#1e293b' }}
+            >
               {lang === 'ar'
                 ? 'تستلم راتبك أو دخلك، وبعد أيام قليلة تتفاجأ بأن رصيدك قارب على الصفر، وتشعر بالحسرة والندم لأنك لا تدري أين أُنفقت، وهذا الأمر يتكرر معك شهراً بعد شهر.'
                 : lang === 'fr'
@@ -95,11 +108,18 @@ export default function AboutModal({ isOpen, onClose }) {
           </div>
 
           {/* Card 2: The Solution (How Masarifi Solves It) */}
-          <div className={`p-4 rounded-2xl border ${
-            isDark ? 'bg-emerald-950/40 border-emerald-500/40 text-slate-100' : 'bg-emerald-50/90 border-emerald-200 text-slate-950'
-          }`}>
-            <div className="flex items-center gap-2 mb-2 font-black text-sm text-emerald-800 dark:text-emerald-300">
-              <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          <div 
+            className="p-4 rounded-2xl border"
+            style={{
+              backgroundColor: isDark ? 'rgba(6, 78, 59, 0.4)' : '#ecfdf5',
+              borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : '#a7f3d0',
+            }}
+          >
+            <div 
+              className="flex items-center gap-2 mb-2 font-black text-sm"
+              style={{ color: isDark ? '#34d399' : '#047857' }}
+            >
+              <Sparkles size={16} className="flex-shrink-0" />
               <span>
                 {lang === 'ar' 
                   ? 'من هنا وُلدت فكرة مصاريفي:' 
@@ -108,7 +128,10 @@ export default function AboutModal({ isOpen, onClose }) {
                   : 'Where the Masarifi Idea Came From:'}
               </span>
             </div>
-            <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-relaxed mb-2.5">
+            <p 
+              className="text-xs font-bold leading-relaxed mb-3"
+              style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}
+            >
               {lang === 'ar'
                 ? 'صُمم مصاريفي ليساعدك على مراقبة كل أوقية (MRU) ومعرفة أين تذهب أموالك بالتفصيل:'
                 : lang === 'fr'
@@ -116,9 +139,9 @@ export default function AboutModal({ isOpen, onClose }) {
                 : 'Masarifi was crafted to help you watch your money and see exactly where it is going with complete details for each spending:'}
             </p>
 
-            <ul className="space-y-2 text-xs font-bold text-slate-900 dark:text-slate-100">
+            <ul className="space-y-2 text-xs font-bold" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-600 dark:text-emerald-400 font-black">✓</span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400">✓</span>
                 <span>
                   {lang === 'ar'
                     ? 'تسجيل فوري وتصنيف دقيق لكل مصروف (طعام، نقل، فواتير، مشتريات عفوية).'
@@ -128,7 +151,7 @@ export default function AboutModal({ isOpen, onClose }) {
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-amber-600 dark:text-amber-400 font-black">✓</span>
+                <span className="font-black text-amber-600 dark:text-amber-400">✓</span>
                 <span>
                   {lang === 'ar'
                     ? 'تنبيهات فورية عند وصولك إلى 80% من ميزانية أي فئة لتفادي نفاد المال قبل نهاية الشهر.'
@@ -138,7 +161,7 @@ export default function AboutModal({ isOpen, onClose }) {
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-600 dark:text-emerald-400 font-black">✓</span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400">✓</span>
                 <span>
                   {lang === 'ar'
                     ? 'مستشار مالي ذكي بالذكاء الاصطناعي يقدم نصائح مخصصة لوقف النزيف المالي وزيادة ادخارك.'
@@ -151,9 +174,14 @@ export default function AboutModal({ isOpen, onClose }) {
           </div>
 
           {/* Card 3: The Result */}
-          <div className={`p-3 rounded-2xl border text-center font-bold text-xs ${
-            isDark ? 'bg-slate-800 border-slate-700 text-emerald-400' : 'bg-emerald-100/70 border-emerald-300 text-emerald-950'
-          }`}>
+          <div 
+            className="p-3 rounded-2xl border text-center font-bold text-xs"
+            style={{
+              backgroundColor: isDark ? '#1e293b' : '#d1fae5',
+              borderColor: isDark ? '#334155' : '#6ee7b7',
+              color: isDark ? '#34d399' : '#064e3b'
+            }}
+          >
             <span>
               {lang === 'ar'
                 ? '🎯 مع مصاريفي: وداعاً للحيرة وضياع المال.. تحكّم بميزانيتك براحة بال كاملة!'
