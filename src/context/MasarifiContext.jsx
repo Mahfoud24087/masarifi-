@@ -807,7 +807,7 @@ export function MasarifiProvider({ children }) {
               try { parsed = JSON.parse(row.notes); } catch {}
               return {
                 id: parsed.id || row.id.replace('tk_', ''),
-                userId: row.user_id,
+                userId: parsed.userId || row.user_id,
                 userName: parsed.userName || 'مستخدم',
                 category: parsed.category || 'general',
                 subject: parsed.subject || row.title.replace('[TICKET] ', ''),
@@ -815,7 +815,7 @@ export function MasarifiProvider({ children }) {
                 contact: parsed.contact || '',
                 status: parsed.status || 'new',
                 adminNotes: parsed.adminNotes || '',
-                createdAt: row.created_at,
+                createdAt: parsed.createdAt || row.created_at,
                 updatedAt: parsed.updatedAt || row.created_at,
               };
             });
