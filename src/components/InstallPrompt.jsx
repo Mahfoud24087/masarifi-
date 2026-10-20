@@ -25,10 +25,8 @@ export default function InstallPrompt() {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Only show if not previously dismissed in this session
-      if (!sessionStorage.getItem('masarifi_install_dismissed')) {
-        setShowPrompt(true);
-      }
+      // Android: ALWAYS show the install banner — no sessionStorage suppression
+      setShowPrompt(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -41,17 +39,19 @@ export default function InstallPrompt() {
       return;
     }
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
+    deferredPrompt.prompt(); // Direct 1-click native install — no instructions for Android
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowPrompt(false);
-    }
     setDeferredPrompt(null);
+    setShowPrompt(false); // Hide after user responds (accepted or declined)
   };
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    sessionStorage.setItem('masarifi_install_dismissed', 'true');
+    if (isIOS) {
+      // Only suppress iOS prompt per session (user sees instructions, fair to not repeat)
+      sessionStorage.setItem('masarifi_install_dismissed', 'true');
+    }
+    // Android: do NOT write to sessionStorage → banner reappears every visit
   };
 
   const text = {

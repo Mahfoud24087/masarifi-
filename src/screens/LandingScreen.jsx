@@ -52,15 +52,12 @@ export default function LandingScreen() {
       return;
     }
     if (deferredPrompt) {
+      // Android: direct 1-click native install, no instructions
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setDeferredPrompt(null);
-    } else {
-      // Trigger general install prompt or show instructions
-      const promptTrigger = document.getElementById('masarifi-install-trigger');
-      if (promptTrigger) promptTrigger.click();
-      else setShowIOSModal(true);
     }
+    // If no deferredPrompt yet (browser hasn't fired event / already installed), do nothing
   };
 
   const features = [
