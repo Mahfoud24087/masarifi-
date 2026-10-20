@@ -17,6 +17,9 @@ const KEYS = {
   ADMIN_LOGGED: 'masarifi_admin_logged_in',
   DISMISSED_NOTIFS: 'masarifi_dismissed_ticket_notifs',
   DISMISSED_BUDGETS: 'masarifi_dismissed_budget_alerts',
+  ADMIN_ACCOUNT: 'masarifi_admin_account',
+  CURRENT_SCREEN: 'masarifi_current_screen',
+  ACTIVE_TAB: 'masarifi_active_tab',
 };
 
 const load = (key, fallback) => {
@@ -32,8 +35,34 @@ export function MasarifiProvider({ children }) {
   const [lang, setLangState]      = useState(() => load(KEYS.LANG, 'ar'));
   const [theme, setThemeState]    = useState(() => load(KEYS.THEME, 'light'));
   const [currentUser, setCurrentUser] = useState(() => load(KEYS.CURRENT_USER, null));
-  const [screen, setScreen]       = useState(() => load(KEYS.CURRENT_USER, null) ? 'app' : 'landing');
-  const [activeTab, setActiveTab] = useState('home');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => load(KEYS.ADMIN_LOGGED, false));
+
+  // Determine initial screen on load/refresh:
+  const [screen, setScreenState] = useState(() => {
+    const savedScreen = load(KEYS.CURRENT_SCREEN, null);
+    const hasAdmin = load(KEYS.ADMIN_LOGGED, false);
+    const hasUser = load(KEYS.CURRENT_USER, null);
+
+    if (savedScreen === 'admin' && hasAdmin) return 'admin';
+    if (savedScreen === 'app' && hasUser) return 'app';
+    if (savedScreen && ['landing', 'auth-signin', 'auth-signup'].includes(savedScreen)) return savedScreen;
+
+    if (hasAdmin) return 'admin';
+    if (hasUser) return 'app';
+    return 'landing';
+  });
+
+  const [activeTab, setActiveTabState] = useState(() => load(KEYS.ACTIVE_TAB, 'home'));
+
+  const setScreen = useCallback((s) => {
+    setScreenState(s);
+    save(KEYS.CURRENT_SCREEN, s);
+  }, []);
+
+  const setActiveTab = useCallback((tab) => {
+    setActiveTabState(tab);
+    save(KEYS.ACTIVE_TAB, tab);
+  }, []);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense]   = useState(null);
   const [confirmDialog, setConfirmDialog]     = useState(null);
@@ -43,7 +72,6 @@ export function MasarifiProvider({ children }) {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [ticketVer, setTicketVer] = useState(0);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => load(KEYS.ADMIN_LOGGED, false));
 
   // Month navigation: { year, month } 0-indexed month
   const now = new Date();
@@ -207,8 +235,12 @@ export function MasarifiProvider({ children }) {
   }, []);
 
   const signOut = useCallback(() => {
-    save(KEYS.CURRENT_USER, null); setCurrentUser(null);
-    setScreen('landing'); setActiveTab('home');
+    save(KEYS.CURRENT_USER, null);
+    save(KEYS.CURRENT_SCREEN, 'landing');
+    save(KEYS.ACTIVE_TAB, 'home');
+    setCurrentUser(null);
+    setScreenState('landing');
+    setActiveTabState('home');
   }, []);
 
   const updateProfile = useCallback(async (updates) => {
@@ -732,7 +764,7 @@ export function MasarifiProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketVer]);
 
-  // Fetch tickets from Supabase if configured
+  // Fetch tickets from Supabase if configured (and poll periodically)
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchSupabaseTickets() {
@@ -742,7 +774,7 @@ export function MasarifiProvider({ children }) {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const mapped = data.map((d) => ({
             id: d.id,
             userId: d.user_id,
@@ -764,6 +796,8 @@ export function MasarifiProvider({ children }) {
       }
     }
     fetchSupabaseTickets();
+    const timer = setInterval(fetchSupabaseTickets, 15000);
+    return () => clearInterval(timer);
   }, [bumpTicket]);
 
   const addTicket = useCallback(async ({ category, subject, message, contact }) => {
@@ -875,19 +909,37 @@ export function MasarifiProvider({ children }) {
     return userTickets.filter((t) => t.status === 'resolved' && !dismissedTicketIds.includes(t.id));
   }, [userTickets, currentUser, dismissedTicketIds]);
 
-  const verifyAdminPin = useCallback((pin) => {
-    const cleanPin = (pin || '').trim();
-    if (cleanPin === '2026') {
+  const DEFAULT_ADMIN = { name: 'Admin', password: 'admin' };
+  const [adminAccount, setAdminAccount] = useState(() => load(KEYS.ADMIN_ACCOUNT, DEFAULT_ADMIN));
+
+  const verifyAdminCredentials = useCallback((nameInput, passwordInput) => {
+    const currentAdmin = load(KEYS.ADMIN_ACCOUNT, DEFAULT_ADMIN);
+    const cleanName = (nameInput || '').trim();
+    const cleanPass = (passwordInput || '').trim();
+    if (
+      cleanName.toLowerCase() === (currentAdmin.name || 'admin').toLowerCase() &&
+      cleanPass === (currentAdmin.password || 'admin')
+    ) {
       setIsAdminLoggedIn(true);
       save(KEYS.ADMIN_LOGGED, true);
       return { success: true };
     }
-    return { success: false, error: 'invalidPin' };
+    return { success: false, error: 'invalidCredentials' };
+  }, []);
+
+  const updateAdminProfile = useCallback((updates) => {
+    const currentAdmin = load(KEYS.ADMIN_ACCOUNT, DEFAULT_ADMIN);
+    const updated = { ...currentAdmin, ...updates };
+    setAdminAccount(updated);
+    save(KEYS.ADMIN_ACCOUNT, updated);
+    return { success: true };
   }, []);
 
   const logoutAdmin = useCallback(() => {
     setIsAdminLoggedIn(false);
     save(KEYS.ADMIN_LOGGED, false);
+    save(KEYS.CURRENT_SCREEN, 'landing');
+    setScreenState('landing');
   }, []);
 
   // Community review moderation for admin
@@ -953,7 +1005,7 @@ export function MasarifiProvider({ children }) {
     showSupportModal, setShowSupportModal,
     tickets, userTickets, userResolvedTickets, dismissTicketNotification,
     addTicket, updateTicketStatus, deleteTicket,
-    isAdminLoggedIn, verifyAdminPin, logoutAdmin,
+    isAdminLoggedIn, verifyAdminCredentials, updateAdminProfile, adminAccount, logoutAdmin,
     allUsersList,
   };
 

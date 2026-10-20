@@ -5,7 +5,7 @@ import AboutModal from '../components/AboutModal';
 import DeveloperContactBar from '../components/DeveloperContactBar';
 
 export default function AuthScreen() {
-  const { t, isDark, isRTL, signUp, signIn, screen, setScreen, lang } = useMasarifi();
+  const { t, isDark, isRTL, signUp, signIn, screen, setScreen, lang, verifyAdminCredentials } = useMasarifi();
   const isSignUp = screen === 'auth-signup';
 
   const [form, setForm] = useState({ name: '', password: '', confirmPassword: '' });
@@ -35,6 +35,14 @@ export default function AuthScreen() {
       if (result && !result.success && result.error === 'nameExists')
         setErrors({ name: t('auth.errors.nameExists') });
     } else {
+      // 1. Check if trying to login as admin
+      const adminRes = verifyAdminCredentials(form.name.trim(), form.password);
+      if (adminRes && adminRes.success) {
+        setLoading(false);
+        setScreen('admin');
+        return;
+      }
+
       result = await signIn(form.name.trim(), form.password);
       if (result && !result.success)
         setErrors({ password: t('auth.errors.invalidCredentials') });

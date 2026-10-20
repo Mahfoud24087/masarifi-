@@ -1,46 +1,42 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Shield, ArrowLeft, ArrowRight, Lock, Unlock, Users, 
-  Receipt, TrendingUp, Star, MessageSquare, CheckCircle2, 
+  Shield, ArrowLeft, ArrowRight, Lock, Users, 
+  TrendingUp, Star, MessageSquare, CheckCircle2, 
   Clock, AlertCircle, Trash2, Edit3, ExternalLink, RefreshCw, 
   Search, Bug, Lightbulb, UserCheck, HelpCircle, Phone, Mail,
-  Send, Sparkles, Activity, Check, Eye, EyeOff
+  Send, Sparkles, Activity, Check, Eye, EyeOff, Settings, Key, User
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 
 export default function AdminScreen() {
   const { 
     t, isDark, isRTL, lang, setScreen,
-    isAdminLoggedIn, verifyAdminPin, logoutAdmin,
+    isAdminLoggedIn, logoutAdmin,
+    adminAccount, updateAdminProfile,
     tickets, updateTicketStatus, deleteTicket,
     reviews, deleteReview,
     allUsersList, expenses, totalExpenses, totalIncome,
     showToast
   } = useMasarifi();
 
-  const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'stats' | 'reviews' | 'users'
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'stats' | 'reviews' | 'users' | 'settings'
   const [ticketFilter, setTicketFilter] = useState('all'); // 'all' | 'new' | 'in_progress' | 'resolved'
   const [ticketCatFilter, setTicketCatFilter] = useState('all');
   const [adminNotes, setAdminNotes] = useState({});
   const [userSearch, setUserSearch] = useState('');
 
-  const BackArrow = isRTL ? ArrowRight : ArrowLeft;
+  // Admin Profile Settings State
+  const [settingsForm, setSettingsForm] = useState({
+    name: adminAccount?.name || 'Admin',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [settingsErrors, setSettingsErrors] = useState({});
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
 
-  // Handle PIN unlock
-  const handleUnlock = (e) => {
-    e.preventDefault();
-    const res = verifyAdminPin(pinInput);
-    if (res.success) {
-      setPinError('');
-      setPinInput('');
-      showToast('🔓 ' + t('admin.unlock'));
-    } else {
-      setPinError(t('admin.pinError'));
-    }
-  };
+  const BackArrow = isRTL ? ArrowRight : ArrowLeft;
 
   // KPI Calculations
   const totalUsersCount = Math.max(allUsersList.length, 1);
@@ -116,78 +112,70 @@ export default function AdminScreen() {
     }
   };
 
-  // ── 1. PIN Security Lock Screen ──
+  const handleSaveAdminSettings = (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!settingsForm.name.trim()) errs.name = t('auth.errors.required');
+    if (!settingsForm.currentPassword) {
+      errs.currentPassword = t('auth.errors.required');
+    } else if (settingsForm.currentPassword !== adminAccount?.password) {
+      errs.currentPassword = t('admin.adminWrongPassword');
+    }
+
+    if (settingsForm.newPassword) {
+      if (settingsForm.newPassword.length < 4) {
+        errs.newPassword = t('auth.errors.passwordShort');
+      } else if (settingsForm.newPassword !== settingsForm.confirmPassword) {
+        errs.confirmPassword = t('auth.errors.passwordMismatch');
+      }
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setSettingsErrors(errs);
+      return;
+    }
+
+    const updates = { name: settingsForm.name.trim() };
+    if (settingsForm.newPassword) {
+      updates.password = settingsForm.newPassword;
+    }
+
+    updateAdminProfile(updates);
+    setSettingsErrors({});
+    setSettingsForm((prev) => ({
+      ...prev,
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    }));
+    showToast('✅ ' + t('admin.adminSettingsSaved'));
+  };
+
+  // ── 1. If not logged in as Admin, redirect to Sign In ──
   if (!isAdminLoggedIn) {
     return (
       <div 
-        className={`min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden ${
-          isDark 
-            ? 'bg-slate-950 text-slate-100' 
-            : 'bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white'
+        className={`min-h-screen flex flex-col items-center justify-center p-4 ${
+          isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-900 text-white'
         }`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        {/* Ambient background glow rings */}
-        <div className="absolute top-1/4 -left-20 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 -right-20 w-80 h-80 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-
-        <div className="w-full max-w-sm rounded-3xl p-7 sm:p-9 shadow-2xl border border-slate-800 bg-slate-900/90 backdrop-blur-xl text-center relative z-10">
+        <div className="w-full max-w-sm rounded-3xl p-8 border border-slate-800 bg-slate-900/90 text-center">
           <div 
-            className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center text-white shadow-xl shadow-emerald-500/20 border border-emerald-400/30"
+            className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center text-white shadow-xl shadow-emerald-500/20"
             style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
           >
             <Shield size={32} />
           </div>
-
-          <h1 className="text-xl font-extrabold mb-1 text-white">{t('admin.pinTitle')}</h1>
+          <h1 className="text-xl font-extrabold mb-2 text-white">{t('admin.title')}</h1>
           <p className="text-xs text-slate-400 mb-6">{t('admin.pinSubtitle')}</p>
-
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <div className="relative">
-              <input
-                type={showPin ? 'text' : 'password'}
-                autoFocus
-                value={pinInput}
-                onChange={(e) => { setPinInput(e.target.value); setPinError(''); }}
-                placeholder={t('admin.pinPlaceholder')}
-                className="w-full px-4 py-3.5 rounded-2xl text-center text-lg tracking-widest font-bold border outline-none transition-all bg-slate-800/90 border-slate-700 text-white placeholder-slate-500 focus:border-emerald-500 shadow-inner"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPin(!showPin)}
-                className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400 hover:text-white p-1`}
-              >
-                {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {pinError && (
-              <div className="p-2.5 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-xs font-semibold flex items-center justify-center gap-1.5 animate-shake">
-                <AlertCircle size={14} />
-                <span>{pinError}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl font-bold text-white text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
-              id="masarifi-admin-unlock-btn"
-            >
-              <Unlock size={17} />
-              <span>{t('admin.unlock')}</span>
-            </button>
-          </form>
-
-          <div className="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-center">
-            <button
-              onClick={() => setScreen('auth-signin')}
-              className="text-xs font-semibold text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5"
-            >
-              <BackArrow size={14} />
-              <span>{t('auth.signIn')} / {t('admin.backToApp')}</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setScreen('auth-signin')}
+            className="w-full py-3.5 rounded-2xl font-bold text-white text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+          >
+            {t('auth.signIn')}
+          </button>
         </div>
       </div>
     );
@@ -204,16 +192,6 @@ export default function AdminScreen() {
       {/* Top Bar */}
       <header className="sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setScreen('app')}
-            className="p-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
-            title={t('admin.backToApp')}
-            id="masarifi-admin-back-btn"
-          >
-            <BackArrow size={16} />
-            <span className="hidden sm:inline">{t('admin.backToApp')}</span>
-          </button>
-
           <div className="flex items-center gap-2.5">
             <div 
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"
@@ -224,6 +202,9 @@ export default function AdminScreen() {
             <div>
               <h1 className="font-extrabold text-sm sm:text-base leading-tight text-white flex items-center gap-2">
                 <span>{t('admin.title')}</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {adminAccount?.name || 'Admin'}
+                </span>
               </h1>
               <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -313,17 +294,18 @@ export default function AdminScreen() {
         </div>
 
         {/* Tab Navigation Ribbon */}
-        <div className="flex rounded-2xl p-1.5 mb-6 border border-slate-800 bg-slate-900/90 shadow-md">
+        <div className="flex rounded-2xl p-1.5 mb-6 border border-slate-800 bg-slate-900/90 shadow-md overflow-x-auto">
           {[
             { id: 'tickets', label: t('admin.tabTickets'), count: openTicketsCount, highlight: openTicketsCount > 0 },
             { id: 'stats', label: t('admin.tabStats') },
             { id: 'reviews', label: t('admin.tabReviews'), count: reviews.length },
             { id: 'users', label: t('admin.tabUsers'), count: totalUsersCount },
+            { id: 'settings', label: t('admin.tabSettings') },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[110px] py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === tab.id
                   ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -697,6 +679,137 @@ export default function AdminScreen() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB 5: ADMIN PROFILE & SECURITY SETTINGS ─── */}
+        {activeTab === 'settings' && (
+          <div className="max-w-xl mx-auto space-y-6">
+            <div className="p-6 sm:p-7 rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div 
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"
+                  style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+                >
+                  <Settings size={22} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">
+                    {t('admin.adminProfileTitle')}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {t('admin.adminProfileSubtitle')}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveAdminSettings} className="space-y-4">
+                {/* Admin Username */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <User size={14} className="text-emerald-400" />
+                    <span>{t('admin.adminNameLabel')}</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsForm.name}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all"
+                  />
+                  {settingsErrors.name && (
+                    <p className="text-red-400 text-xs mt-1">{settingsErrors.name}</p>
+                  )}
+                </div>
+
+                {/* Current Admin Password */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Key size={14} className="text-amber-400" />
+                    <span>{t('admin.adminPasswordLabel')}</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPass ? 'text' : 'password'}
+                      value={settingsForm.currentPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, currentPassword: e.target.value })}
+                      placeholder="••••••••"
+                      className={`w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all ${
+                        isRTL ? 'pl-11' : 'pr-11'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400 hover:text-white p-1`}
+                    >
+                      {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {settingsErrors.currentPassword && (
+                    <p className="text-red-400 text-xs mt-1">{settingsErrors.currentPassword}</p>
+                  )}
+                </div>
+
+                {/* New Admin Password (Optional) */}
+                <div className="pt-2 border-t border-slate-800">
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Lock size={14} className="text-emerald-400" />
+                    <span>{t('admin.adminNewPasswordLabel')}</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      value={settingsForm.newPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })}
+                      placeholder="••••••••"
+                      className={`w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all ${
+                        isRTL ? 'pl-11' : 'pr-11'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'} text-slate-400 hover:text-white p-1`}
+                    >
+                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {settingsErrors.newPassword && (
+                    <p className="text-red-400 text-xs mt-1">{settingsErrors.newPassword}</p>
+                  )}
+                </div>
+
+                {/* Confirm New Password */}
+                {settingsForm.newPassword && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      {t('admin.adminConfirmPasswordLabel')}
+                    </label>
+                    <input
+                      type="password"
+                      value={settingsForm.confirmPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all"
+                    />
+                    {settingsErrors.confirmPassword && (
+                      <p className="text-red-400 text-xs mt-1">{settingsErrors.confirmPassword}</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 rounded-2xl font-bold text-white text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+                  >
+                    <Check size={17} />
+                    <span>{t('admin.saveAdminSettings')}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
