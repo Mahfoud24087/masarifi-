@@ -348,19 +348,21 @@ export function MasarifiProvider({ children }) {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const mapped = data.map((d) => ({
-            id: d.id,
-            userId: d.user_id,
-            title: d.title,
-            amount: parseFloat(d.amount),
-            category: d.category,
-            date: d.date,
-            notes: d.notes || '',
-            type: d.type || 'expense',
-            recurring: d.recurring || false,
-            customCategory: d.custom_category || undefined,
-            createdAt: d.created_at,
-          }));
+          const mapped = data
+            .filter((d) => d.category !== '__support_ticket__')
+            .map((d) => ({
+              id: d.id,
+              userId: d.user_id,
+              title: d.title,
+              amount: parseFloat(d.amount),
+              category: d.category,
+              date: d.date,
+              notes: d.notes || '',
+              type: d.type || 'expense',
+              recurring: d.recurring || false,
+              customCategory: d.custom_category || undefined,
+              createdAt: d.created_at,
+            }));
           // Merge with local expenses without duplicates
           const local = load(KEYS.EXPENSES, []);
           const otherUsersExpenses = local.filter((e) => e.userId !== currentUser.id);
@@ -756,7 +758,7 @@ export function MasarifiProvider({ children }) {
     [reviews, currentUser]
   );
 
-  // ── Support Tickets & Admin ────────────────────────────────────────
+  // ── Support Tickets & Admin Sync ────────────────────────────────────
   const bumpTicket = useCallback(() => setTicketVer((v) => v + 1), []);
 
   const tickets = useMemo(() => {
@@ -764,18 +766,21 @@ export function MasarifiProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketVer]);
 
-  // Fetch tickets from Supabase if configured (and poll periodically)
+  // Fetch tickets from Supabase using dual-table sync (support_tickets or universal cloud expenses)
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchSupabaseTickets() {
       try {
-        const { data, error } = await supabase
+        let mapped = null;
+
+        // 1. Try dedicated support_tickets table first
+        const { data: dedicatedData, error: dedicatedErr } = await supabase
           .from('support_tickets')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data) {
-          const mapped = data.map((d) => ({
+        if (!dedicatedErr && dedicatedData && dedicatedData.length > 0) {
+          mapped = dedicatedData.map((d) => ({
             id: d.id,
             userId: d.user_id,
             userName: d.user_name || 'مستخدم',
@@ -788,7 +793,45 @@ export function MasarifiProvider({ children }) {
             createdAt: d.created_at,
             updatedAt: d.updated_at || d.created_at,
           }));
-          save(KEYS.TICKETS, mapped);
+        } else {
+          // 2. Universal cloud sync fallback using expenses table
+          const { data: expenseTickets, error: expErr } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('category', '__support_ticket__')
+            .order('created_at', { ascending: false });
+
+          if (!expErr && expenseTickets) {
+            mapped = expenseTickets.map((row) => {
+              let parsed = {};
+              try { parsed = JSON.parse(row.notes); } catch {}
+              return {
+                id: parsed.id || row.id.replace('tk_', ''),
+                userId: row.user_id,
+                userName: parsed.userName || 'مستخدم',
+                category: parsed.category || 'general',
+                subject: parsed.subject || row.title.replace('[TICKET] ', ''),
+                message: parsed.message || '',
+                contact: parsed.contact || '',
+                status: parsed.status || 'new',
+                adminNotes: parsed.adminNotes || '',
+                createdAt: row.created_at,
+                updatedAt: parsed.updatedAt || row.created_at,
+              };
+            });
+          }
+        }
+
+        if (mapped) {
+          // Merge with local tickets preserving latest
+          const local = load(KEYS.TICKETS, []);
+          const mergedMap = new Map();
+          local.forEach((t) => mergedMap.set(t.id, t));
+          mapped.forEach((t) => mergedMap.set(t.id, t));
+          const mergedList = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          save(KEYS.TICKETS, mergedList);
           bumpTicket();
         }
       } catch (err) {
@@ -796,7 +839,7 @@ export function MasarifiProvider({ children }) {
       }
     }
     fetchSupabaseTickets();
-    const timer = setInterval(fetchSupabaseTickets, 15000);
+    const timer = setInterval(fetchSupabaseTickets, 10000);
     return () => clearInterval(timer);
   }, [bumpTicket]);
 
@@ -820,10 +863,11 @@ export function MasarifiProvider({ children }) {
     save(KEYS.TICKETS, all);
     bumpTicket();
 
-    // Sync to Supabase support_tickets table if available
+    // Universal Cloud Sync
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('support_tickets').insert([{
+        // Attempt support_tickets table first
+        const { error: dedicatedErr } = await supabase.from('support_tickets').insert([{
           id: newTicket.id,
           user_id: newTicket.userId,
           user_name: newTicket.userName,
@@ -835,8 +879,35 @@ export function MasarifiProvider({ children }) {
           admin_notes: newTicket.adminNotes,
           created_at: newTicket.createdAt,
         }]);
+
+        // If table does not exist or fails, securely sync via universal cloud expenses table
+        if (dedicatedErr) {
+          let syncUserId = currentUser?.id;
+          if (!syncUserId || syncUserId === 'anonymous') {
+            const { data: firstProfile } = await supabase.from('profiles').select('id').limit(1);
+            if (firstProfile?.[0]?.id) syncUserId = firstProfile[0].id;
+          }
+
+          if (syncUserId) {
+            const ticketJson = JSON.stringify({
+              __masarifi_type: 'support_ticket',
+              ...newTicket,
+            });
+            await supabase.from('expenses').insert([{
+              id: `tk_${newTicket.id}`,
+              user_id: syncUserId,
+              title: `[TICKET] ${newTicket.subject}`,
+              amount: 0,
+              category: '__support_ticket__',
+              date: new Date().toISOString().slice(0, 10),
+              notes: ticketJson,
+              type: 'ticket',
+              recurring: false,
+            }]);
+          }
+        }
       } catch (err) {
-        console.warn('Supabase support ticket sync error:', err);
+        console.warn('Universal ticket sync error:', err);
       }
     }
 
@@ -859,7 +930,22 @@ export function MasarifiProvider({ children }) {
       try {
         const updateData = { status, updated_at: all[idx].updatedAt };
         if (adminNotes !== null) updateData.admin_notes = adminNotes;
-        await supabase.from('support_tickets').update(updateData).eq('id', ticketId);
+
+        const { error: dedicatedErr } = await supabase
+          .from('support_tickets')
+          .update(updateData)
+          .eq('id', ticketId);
+
+        if (dedicatedErr) {
+          const ticketJson = JSON.stringify({
+            __masarifi_type: 'support_ticket',
+            ...all[idx],
+          });
+          await supabase
+            .from('expenses')
+            .update({ notes: ticketJson })
+            .eq('id', `tk_${ticketId}`);
+        }
       } catch (err) {
         console.warn('Supabase update ticket error:', err);
       }
@@ -877,6 +963,7 @@ export function MasarifiProvider({ children }) {
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('support_tickets').delete().eq('id', ticketId);
+        await supabase.from('expenses').delete().eq('id', `tk_${ticketId}`);
       } catch (err) {
         console.warn('Supabase delete ticket error:', err);
       }

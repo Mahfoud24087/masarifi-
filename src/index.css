@@ -55,19 +55,32 @@ input[type=number]::-webkit-outer-spin-button {
   transition-timing-function: ease;
 }
 
-/* Mobile app max width centering */
+/* Mobile app max width centering for user screens, full-width for admin */
 #root {
-  max-width: 480px;
-  margin: 0 auto;
   min-height: 100vh;
   position: relative;
+  width: 100%;
+}
+
+#root:not(.admin-view) {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+#root.admin-view {
+  max-width: 100% !important;
+  margin: 0 !important;
+  background-color: #020617;
 }
 
 @media (min-width: 480px) {
-  body {
+  body:has(#root.admin-view) {
+    background: #020617 !important;
+  }
+  body:not(:has(#root.admin-view)) {
     background: #f1f5f9;
   }
-  #root {
+  #root:not(.admin-view) {
     box-shadow: 0 0 60px rgba(0,0,0,0.15);
   }
 }

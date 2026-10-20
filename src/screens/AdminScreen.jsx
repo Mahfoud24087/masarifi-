@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Shield, ArrowLeft, ArrowRight, Lock, Users, 
   TrendingUp, Star, MessageSquare, CheckCircle2, 
@@ -18,6 +18,15 @@ export default function AdminScreen() {
     allUsersList, expenses, totalExpenses, totalIncome,
     showToast
   } = useMasarifi();
+
+  // Make admin full-width on PC desktop
+  useEffect(() => {
+    const rootEl = document.getElementById('root');
+    if (rootEl) rootEl.classList.add('admin-view');
+    return () => {
+      if (rootEl) rootEl.classList.remove('admin-view');
+    };
+  }, []);
 
   const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'stats' | 'reviews' | 'users' | 'settings'
   const [ticketFilter, setTicketFilter] = useState('all'); // 'all' | 'new' | 'in_progress' | 'resolved'
