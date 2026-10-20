@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare, Sparkles, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Globe, Moon, Sun, TrendingDown, Shield, BarChart2, Star, MessageSquare, Sparkles, Info, Download, Smartphone } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import InstallPrompt from '../components/InstallPrompt';
 import AboutModal from '../components/AboutModal';
@@ -29,6 +29,39 @@ export default function LandingScreen() {
   const { t, lang, setLang, isDark, toggleTheme, setScreen, isRTL, featuredReviews } = useMasarifi();
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSModal, setShowIOSModal] = useState(false);
+
+  useEffect(() => {
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isApple = /iphone|ipad|ipod/.test(ua);
+    if (isApple) setIsIOS(true);
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleDownloadApp = async () => {
+    if (isIOS) {
+      setShowIOSModal(true);
+      return;
+    }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') setDeferredPrompt(null);
+    } else {
+      // Trigger general install prompt or show instructions
+      const promptTrigger = document.getElementById('masarifi-install-trigger');
+      if (promptTrigger) promptTrigger.click();
+      else setShowIOSModal(true);
+    }
+  };
 
   const features = [
     {
@@ -150,6 +183,22 @@ export default function LandingScreen() {
           >
             {t('landing.signIn')}
           </button>
+
+          {/* Prominent Download App Button for Android & iOS */}
+          <button
+            onClick={handleDownloadApp}
+            className={`w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 border transition-all active:scale-95 hover:scale-[1.02] shadow-sm ${
+              isDark 
+                ? 'bg-slate-800/90 border-emerald-500/40 text-emerald-300 hover:bg-slate-800' 
+                : 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100/80'
+            }`}
+            id="masarifi-landing-download-btn"
+          >
+            <Download size={18} className="text-emerald-500" />
+            <span>
+              {lang === 'ar' ? 'تحميل وتثبيت التطبيق على الهاتف' : lang === 'fr' ? 'Télécharger l’application mobile' : 'Download Mobile App'}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -234,6 +283,76 @@ export default function LandingScreen() {
 
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <InstallPrompt />
+
+      {/* iOS Installation Instructions Modal */}
+      {showIOSModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          dir={isRTL ? 'rtl' : 'ltr'}
+          onClick={() => setShowIOSModal(false)}
+        >
+          <div
+            className={`w-full max-w-sm rounded-3xl p-6 border shadow-2xl ${
+              isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-900'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+              <Download size={26} />
+            </div>
+
+            <h3 className="font-extrabold text-base text-center mb-1">
+              {lang === 'ar' ? 'تثبيت مصاريفي على هاتفك' : lang === 'fr' ? 'Installer Masarifi sur votre mobile' : 'Install Masarifi on your device'}
+            </h3>
+            <p className="text-xs text-center text-slate-400 mb-5">
+              {isIOS ? 'Apple iPhone (Safari)' : 'Android / Google Chrome'}
+            </p>
+
+            <div className="space-y-3 text-xs font-semibold mb-6">
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
+                <span className="w-6 h-6 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">1</span>
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'في متصفح هاتفك (Safari أو Chrome)، اضغط على زر الخيارات أو المشاركة (📤 / ⋮).' 
+                    : lang === 'fr' 
+                    ? 'Dans votre navigateur (Safari ou Chrome), touchez le bouton Partager ou Menu (📤 / ⋮).' 
+                    : 'In your browser (Safari or Chrome), tap Share or Menu (📤 / ⋮).'}
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40">
+                <span className="w-6 h-6 rounded-xl bg-blue-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">2</span>
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'اختر «إضافة إلى الشاشة الرئيسية» (Add to Home Screen ➕).' 
+                    : lang === 'fr' 
+                    ? 'Touchez « Sur l\'écran d\'accueil » ou « Installer l\'application » (➕).' 
+                    : 'Select "Add to Home Screen" or "Install App" (➕).'}
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40">
+                <span className="w-6 h-6 rounded-xl bg-purple-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">3</span>
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'اضغط على «إضافة»، وسيظهر تطبيق مصاريفي على شاشتك مباشرة!' 
+                    : lang === 'fr' 
+                    ? 'Touchez « Ajouter » : Masarifi est prêt sur votre écran d\'accueil !' 
+                    : 'Tap "Add" : Masarifi is ready on your home screen!'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowIOSModal(false)}
+              className="w-full py-3.5 rounded-2xl font-bold text-xs text-white shadow-lg transition-all active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+            >
+              {lang === 'ar' ? 'حسناً، فهمت' : lang === 'fr' ? 'Compris' : 'Got It'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
