@@ -60,9 +60,11 @@ export default function InstallPrompt() {
       desc: 'تطبيق أصلي سريع يعمل بدون إنترنت على جميع الأجهزة', 
       install: 'تثبيت الآن',
       iosTitle: 'تثبيت مصاريفي على آيفون (Apple iOS)',
-      iosStep1: 'اضغط على زر المشاركة (Share 📤) في متصفح Safari بالأسفل.',
-      iosStep2: 'مرر للأسفل واضغط على «إضافة إلى الشاشة الرئيسية» (Add to Home Screen ➕).',
-      iosStep3: 'اضغط على «إضافة» (Add) في الزاوية، وسيظهر التطبيق على شاشتك مباشرة!',
+      iosSafariWarning: '⚠️ يجب فتح الموقع عبر متصفح Safari — Chrome لا يدعم التثبيت على iPhone.',
+      iosStep0: 'افتح Safari وانتقل إلى: masarifi-nine.vercel.app',
+      iosStep1: 'اضغط على زر المشاركة 📤 (Share) في أسفل الشاشة.',
+      iosStep2: 'مرر للأسفل واضغط على «إضافة إلى الشاشة الرئيسية» ➕',
+      iosStep3: 'اضغط على «إضافة» (Add) وسيظهر التطبيق على شاشتك!',
       gotIt: 'حسناً، فهمت'
     },
     fr: { 
@@ -70,9 +72,11 @@ export default function InstallPrompt() {
       desc: "Appli mobile rapide et fluide sur tous vos appareils", 
       install: 'Installer',
       iosTitle: 'Installer sur iPhone (Apple iOS)',
-      iosStep1: "Appuyez sur le bouton Partager (Partager 📤) dans Safari.",
-      iosStep2: "Faites défiler vers le bas et touchez « Sur l'écran d'accueil » (➕).",
-      iosStep3: "Touchez « Ajouter » en haut à droite : Masarifi est installé !",
+      iosSafariWarning: '⚠️ Ouvrez le site dans Safari — Chrome ne supporte pas l\'installation sur iPhone.',
+      iosStep0: 'Ouvrez Safari et allez sur : masarifi-nine.vercel.app',
+      iosStep1: "Appuyez sur le bouton Partager 📤 (Share) en bas de l'écran.",
+      iosStep2: "Faites défiler et touchez « Sur l'écran d'accueil » ➕",
+      iosStep3: "Touchez « Ajouter » : Masarifi est prêt !",
       gotIt: 'Compris'
     },
     en: { 
@@ -80,9 +84,11 @@ export default function InstallPrompt() {
       desc: 'Fast, standalone app experience on Android and iPhone', 
       install: 'Install Now',
       iosTitle: 'Install on iPhone (Apple iOS)',
-      iosStep1: 'Tap the Share button (📤) at the bottom of Safari.',
-      iosStep2: 'Scroll down and tap "Add to Home Screen" (➕).',
-      iosStep3: 'Tap "Add" in top right corner. The app is installed!',
+      iosSafariWarning: '⚠️ Open the site in Safari — Chrome does not support installation on iPhone.',
+      iosStep0: 'Open Safari and go to: masarifi-nine.vercel.app',
+      iosStep1: 'Tap the Share button 📤 at the bottom of the screen.',
+      iosStep2: 'Scroll down and tap "Add to Home Screen" ➕',
+      iosStep3: 'Tap "Add" — Masarifi is installed on your home screen!',
       gotIt: 'Got It'
     },
   }[lang] || { 
@@ -90,9 +96,11 @@ export default function InstallPrompt() {
     desc: 'تطبيق أصلي سريع يعمل بدون إنترنت', 
     install: 'تثبيت الآن',
     iosTitle: 'تثبيت مصاريفي على آيفون',
-    iosStep1: 'اضغط على زر المشاركة (📤) في متصفح Safari.',
-    iosStep2: 'اختر «إضافة إلى الشاشة الرئيسية» (➕).',
-    iosStep3: 'اضغط على «إضافة» في الزاوية العلوية.',
+    iosSafariWarning: '⚠️ يجب فتح الموقع عبر متصفح Safari — Chrome لا يدعم التثبيت على iPhone.',
+    iosStep0: 'افتح Safari وانتقل إلى: masarifi-nine.vercel.app',
+    iosStep1: 'اضغط على زر المشاركة 📤 في أسفل الشاشة.',
+    iosStep2: 'اختر «إضافة إلى الشاشة الرئيسية» ➕',
+    iosStep3: 'اضغط على «إضافة» وسيظهر التطبيق على شاشتك.',
     gotIt: 'حسناً'
   };
 
@@ -174,6 +182,23 @@ export default function InstallPrompt() {
                 </p>
               </div>
 
+              {/* Step 0 – open in Safari if using another browser */}
+              {text.iosSafariWarning && (
+                <p className="text-xs text-center text-amber-600 dark:text-amber-400 mb-2">
+                  {text.iosSafariWarning}
+                </p>
+              )}
+              {text.iosStep0 && (
+                <div className="flex items-start gap-3 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40">
+                  <div className="w-7 h-7 rounded-xl bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                    <Info size={15} />
+                  </div>
+                  <p className="flex-1 text-slate-800 dark:text-slate-200 leading-relaxed">
+                    {text.iosStep0}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-start gap-3 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40">
                 <div className="w-7 h-7 rounded-xl bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
                   <PlusSquare size={15} />
@@ -182,6 +207,7 @@ export default function InstallPrompt() {
                   {text.iosStep2}
                 </p>
               </div>
+
 
               <div className="flex items-start gap-3 p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40">
                 <div className="w-7 h-7 rounded-xl bg-purple-500 text-white flex items-center justify-center flex-shrink-0">
