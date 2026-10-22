@@ -193,7 +193,7 @@ export default function LandingScreen() {
           >
             <Download size={18} className="text-emerald-500" />
             <span>
-              {lang === 'ar' ? 'تحميل وتثبيت التطبيق على الهاتف' : lang === 'fr' ? 'Télécharger l’application mobile' : 'Download Mobile App'}
+              {lang === 'ar' ? '\u062A\u062D\u0645\u064A\u0644' : lang === 'fr' ? 'T\u00E9l\u00E9charger' : 'Download'}
             </span>
           </button>
         </div>

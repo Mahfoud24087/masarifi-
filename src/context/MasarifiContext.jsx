@@ -631,20 +631,97 @@ export function MasarifiProvider({ children }) {
   }, [viewMonth]);
 
   // Export to CSV
-  const exportToCSV = useCallback(() => {
-    const rows = [
-      ['Date', 'Title', 'Type', 'Category', 'Amount', 'Currency', 'Recurring', 'Notes'],
-      ...allUserExpenses.map(e => [
-        e.date, e.title, e.type || 'expense', e.category,
-        e.amount, 'MRU', e.recurring ? 'Yes' : 'No', e.notes || '',
-      ]),
-    ];
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url; a.download = `masarifi_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+  const exportToPDF = useCallback(() => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const total = allUserExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    
+    // Group expenses by category
+    const byCategory = {};
+    allUserExpenses.forEach(e => {
+      const cat = e.category || 'other';
+      if (!byCategory[cat]) byCategory[cat] = { items: [], total: 0 };
+      byCategory[cat].items.push(e);
+      byCategory[cat].total += Number(e.amount) || 0;
+    });
+
+    const tableRows = allUserExpenses
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .map(e => `
+        <tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;">${e.date || '-'}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;">${e.title || '-'}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;">${e.category || '-'}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;text-align:right;font-weight:600;">${Number(e.amount).toLocaleString('en-US')} MRU</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#64748b;">${e.notes || '-'}</td>
+        </tr>
+      `).join('');
+
+    const summaryRows = Object.entries(byCategory)
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([cat, data]) => `
+        <tr>
+          <td style="padding:6px 10px;font-size:13px;font-weight:600;text-transform:capitalize;">${cat}</td>
+          <td style="padding:6px 10px;font-size:13px;text-align:center;">${data.items.length}</td>
+          <td style="padding:6px 10px;font-size:13px;text-align:right;font-weight:700;">${data.total.toLocaleString('en-US')} MRU</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:right;color:#64748b;">${total > 0 ? ((data.total / total) * 100).toFixed(1) : 0}%</td>
+        </tr>
+      `).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Masarifi Report ${dateStr}</title>
+<style>
+  @page { margin: 15mm; size: A4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; padding: 20px; }
+  .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #059669; }
+  .header h1 { font-size: 28px; color: #059669; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: #64748b; }
+  .stats { display: flex; gap: 12px; margin-bottom: 25px; }
+  .stat-card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center; }
+  .stat-card .value { font-size: 22px; font-weight: 800; color: #059669; }
+  .stat-card .label { font-size: 11px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .section-title { font-size: 15px; font-weight: 700; color: #334155; margin: 25px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; background: #059669; text-align: left; }
+  thead th:nth-child(4), thead th:nth-child(5) { text-align: right; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  @media print { body { padding: 0; } .no-print { display: none; } }
+</style></head><body>
+  <div class="header">
+    <h1>📊 Masarifi</h1>
+    <p>Expense Report — ${dateStr}</p>
+  </div>
+  <div class="stats">
+    <div class="stat-card"><div class="value">${allUserExpenses.length}</div><div class="label">Transactions</div></div>
+    <div class="stat-card"><div class="value">${total.toLocaleString('en-US')}</div><div class="label">Total (MRU)</div></div>
+    <div class="stat-card"><div class="value">${Object.keys(byCategory).length}</div><div class="label">Categories</div></div>
+  </div>
+  <div class="section-title">Summary by Category</div>
+  <table>
+    <thead><tr><th>Category</th><th style="text-align:center">Count</th><th style="text-align:right">Total</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${summaryRows}</tbody>
+  </table>
+  <div class="section-title">All Transactions</div>
+  <table>
+    <thead><tr><th>Date</th><th>Title</th><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">Notes</th></tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">Generated by Masarifi App — ${new Date().toLocaleString()}</div>
+  <script>window.onload = function() { window.print(); }</script>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      // Fallback: download as HTML file that auto-prints
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `masarifi_report_${dateStr}.html`;
+      a.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
     return { success: true };
   }, [allUserExpenses]);
 
@@ -1084,7 +1161,7 @@ export function MasarifiProvider({ children }) {
     // Budgets
     budgets, saveBudget, getBudget, budgetAlerts, dismissBudgetAlert, requestNotificationPermission,
     // Export
-    exportToCSV,
+    exportToPDF,
     // Reviews
     reviews, featuredReviews, userReview, addReview, deleteReview,
     showReviewModal, setShowReviewModal,

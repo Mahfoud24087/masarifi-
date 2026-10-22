@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star, MessageSquare, Shield } from 'lucide-react';
+import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star, MessageSquare, Shield, FileText } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { EXPENSE_CATEGORIES } from '../models/categories';
 import AboutModal from '../components/AboutModal';
@@ -119,7 +119,7 @@ function BudgetsSection({ isDark, t, isRTL }) {
 export default function SettingsScreen() {
   const { 
     t, isDark, isRTL, lang, setLang, toggleTheme, user, signOut, 
-    setConfirmDialog, expenses, exportToCSV, showToast, totalExpenses, 
+    setConfirmDialog, expenses, exportToPDF, showToast, totalExpenses, 
     setShowReviewModal, userReview, setShowSupportModal, setScreen 
   } = useMasarifi();
   const [expanded, setExpanded] = useState(null);
@@ -133,8 +133,8 @@ export default function SettingsScreen() {
   const divider = `border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`;
 
   const handleExport = () => {
-    exportToCSV();
-    showToast('📥 ' + t('settings.exportSuccess'));
+    exportToPDF();
+    showToast('📄 ' + t('settings.exportSuccess'));
   };
 
   const Row = ({ icon: Icon, label, value, onClick, iconBg = 'bg-emerald-100', iconColor = 'text-emerald-600', danger = false }) => (
@@ -232,10 +232,10 @@ export default function SettingsScreen() {
       <div className={`rounded-3xl p-5 mb-4 ${cardBg}`}>
         <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${textSec}`}>{t('settings.exportData')}</p>
         <button onClick={handleExport}
-          className={`w-full flex items-center gap-3 py-3.5 rounded-2xl transition-colors hover:opacity-75`} id="masarifi-export-csv">
-          <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center"><Download size={17} className="text-teal-600" /></div>
+          className={`w-full flex items-center gap-3 py-3.5 rounded-2xl transition-colors hover:opacity-75`} id="masarifi-export-pdf">
+          <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center"><FileText size={17} className="text-red-500" /></div>
           <div className="flex-1 text-start">
-            <p className={`text-sm font-medium ${textPri}`}>{t('settings.exportCSV')}</p>
+            <p className={`text-sm font-medium ${textPri}`}>{t('settings.exportPDF')}</p>
             <p className={`text-xs ${textSec}`}>{expenses.length} transactions</p>
           </div>
           <Arrow size={15} className={textSec} />
