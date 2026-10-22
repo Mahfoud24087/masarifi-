@@ -4,7 +4,8 @@ import {
   TrendingUp, Star, MessageSquare, CheckCircle2, 
   Clock, AlertCircle, Trash2, Edit3, ExternalLink, RefreshCw, 
   Search, Bug, Lightbulb, UserCheck, HelpCircle, Phone, Mail,
-  Send, Sparkles, Activity, Check, Eye, EyeOff, Settings, Key, User
+  Send, Sparkles, Activity, Check, Eye, EyeOff, Settings, Key, User,
+  Flame, Award, ChevronLeft, ChevronRight, Zap
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 
@@ -33,6 +34,8 @@ export default function AdminScreen() {
   const [ticketCatFilter, setTicketCatFilter] = useState('all');
   const [adminNotes, setAdminNotes] = useState({});
   const [userSearch, setUserSearch] = useState('');
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 8;
 
   // Admin Profile Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -74,13 +77,41 @@ export default function AdminScreen() {
     });
   }, [tickets, ticketFilter, ticketCatFilter]);
 
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    if (!userSearch.trim()) return allUsersList;
-    return allUsersList.filter(u => 
-      u.name?.toLowerCase().includes(userSearch.toLowerCase())
-    );
+  // Sorted & Filtered users by activity (most transactions first)
+  const sortedAndFilteredUsers = useMemo(() => {
+    let list = [...allUsersList];
+    // Sort primarily by expenseCount (most active first), then by creation date
+    list.sort((a, b) => {
+      const countA = a.expenseCount || 0;
+      const countB = b.expenseCount || 0;
+      if (countB !== countA) return countB - countA;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+
+    if (userSearch.trim()) {
+      list = list.filter(u => u.name?.toLowerCase().includes(userSearch.toLowerCase()));
+    }
+    return list;
   }, [allUsersList, userSearch]);
+
+  // Top Most Active User (Leader)
+  const topActiveUser = useMemo(() => {
+    if (!allUsersList || allUsersList.length === 0) return null;
+    const sorted = [...allUsersList].sort((a, b) => (b.expenseCount || 0) - (a.expenseCount || 0));
+    return sorted[0]?.expenseCount > 0 ? sorted[0] : (sorted[0] || null);
+  }, [allUsersList]);
+
+  // Pagination calculations
+  const totalUserPages = Math.ceil(sortedAndFilteredUsers.length / USERS_PER_PAGE) || 1;
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * USERS_PER_PAGE;
+    return sortedAndFilteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [sortedAndFilteredUsers, userPage]);
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearch]);
 
   const handleUpdateStatus = async (ticketId, nextStatus) => {
     const note = adminNotes[ticketId] !== undefined ? adminNotes[ticketId] : null;
@@ -655,49 +686,200 @@ export default function AdminScreen() {
           </div>
         )}
 
-        {/* ─── TAB 4: USERS DIRECTORY ─── */}
+        {/* ─── TAB 4: USERS DIRECTORY (With Leaderboard & Pagination) ─── */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
-            <div className="relative">
-              <input
-                type="text"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search registered users by name..."
-                className={`w-full px-4 py-3.5 rounded-2xl text-sm border border-slate-800 bg-slate-900 text-white outline-none focus:border-emerald-500 shadow-sm ${
-                  isRTL ? 'pr-11' : 'pl-11'
-                }`}
-              />
-              <Search 
-                size={16} 
-                className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-slate-400`} 
-              />
+          <div className="space-y-5">
+            {/* ── Top Most Active User Highlight Card ── */}
+            {topActiveUser && (
+              <div className="p-5 sm:p-6 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black text-xl shadow-lg shadow-amber-500/30">
+                      🏆
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                          <Flame size={13} className="text-amber-400" />
+                          {lang === 'ar' ? 'المستخدم الأكثر نشاطاً في التطبيق' : 'Most Active User'}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-white flex items-center gap-2">
+                        <span>{topActiveUser.name}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                          #1 Leader
+                        </span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5" dir="ltr">
+                        Member since {new Date(topActiveUser.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
+                          day: 'numeric', month: 'short', year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-slate-950/80 px-4 py-3 rounded-2xl border border-slate-800">
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400">{lang === 'ar' ? 'إجمالي العمليات' : 'Total Transactions'}</p>
+                      <p className="text-lg font-black text-emerald-400" dir="ltr">
+                        {topActiveUser.expenseCount || 0} <span className="text-xs font-normal text-slate-400">tx</span>
+                      </p>
+                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                      <Zap size={18} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Search Bar & Filter Summary ── */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:flex-1">
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder={lang === 'ar' ? 'بحث عن مستخدم بالاسم...' : 'Search registered users by name...'}
+                  className={`w-full px-4 py-3.5 rounded-2xl text-sm border border-slate-800 bg-slate-900 text-white outline-none focus:border-emerald-500 shadow-sm ${
+                    isRTL ? 'pr-11' : 'pl-11'
+                  }`}
+                />
+                <Search 
+                  size={16} 
+                  className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-slate-400`} 
+                />
+              </div>
+
+              <div className="text-xs text-slate-400 font-medium px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 shrink-0">
+                {lang === 'ar' ? 'إجمالي المسجلين:' : 'Total Users:'}{' '}
+                <span className="font-bold text-white">{sortedAndFilteredUsers.length}</span>
+              </div>
             </div>
 
+            {/* ── Paginated Users List (Not showing all at once!) ── */}
             <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-md overflow-hidden">
               <div className="divide-y divide-slate-800">
-                {filteredUsers.map((u, i) => (
-                  <div key={u.id || i} className="p-4 flex items-center justify-between gap-3 text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-300 font-extrabold flex items-center justify-center border border-emerald-500/30">
-                        {u.name?.[0]?.toUpperCase() || 'U'}
+                {paginatedUsers.length === 0 ? (
+                  <div className="p-10 text-center text-slate-400 text-sm font-medium">
+                    {lang === 'ar' ? 'لم يتم العثور على أي مستخدم مطابق' : 'No matching users found'}
+                  </div>
+                ) : (
+                  paginatedUsers.map((u, i) => {
+                    const globalIndex = (userPage - 1) * USERS_PER_PAGE + i;
+                    const isTop1 = globalIndex === 0 && (u.expenseCount > 0);
+                    return (
+                      <div key={u.id || i} className="p-4 flex items-center justify-between gap-3 text-sm hover:bg-slate-800/40 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold border ${
+                            isTop1 
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/20' 
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          }`}>
+                            {isTop1 ? '🥇' : (u.name?.[0]?.toUpperCase() || 'U')}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-white">{u.name}</p>
+                              {isTop1 && (
+                                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                  Top Active
+                                </span>
+                              )}
+                              {u.role === 'admin' && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400" dir="ltr">
+                              Joined: {new Date(u.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
+                                day: 'numeric', month: 'short', year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="text-right px-3 py-1 rounded-xl bg-slate-950 border border-slate-800">
+                            <span className="text-xs font-bold text-emerald-400" dir="ltr">
+                              {u.expenseCount !== undefined ? u.expenseCount : 0}
+                            </span>
+                            <span className="text-[10px] text-slate-500 ml-1">
+                              {lang === 'ar' ? 'عملية' : 'tx'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-white">{u.name}</p>
-                        <p className="text-xs text-slate-400" dir="ltr">
-                          Joined: {new Date(u.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
-                            day: 'numeric', month: 'short', year: 'numeric'
-                          })}
-                        </p>
-                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* ── Pagination Bar: Controls showing users in pages ── */}
+              {totalUserPages > 1 && (
+                <div className="p-3.5 bg-slate-950/70 border-t border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">
+                    {lang === 'ar' 
+                      ? `الصفحة ${userPage} من ${totalUserPages}` 
+                      : `Page ${userPage} of ${totalUserPages}`}
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={userPage <= 1}
+                      onClick={() => setUserPage(p => Math.max(p - 1, 1))}
+                      className={`p-2 rounded-xl border flex items-center gap-1 transition-all ${
+                        userPage <= 1 
+                          ? 'border-slate-800 text-slate-600 cursor-not-allowed' 
+                          : 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95'
+                      }`}
+                    >
+                      <ChevronLeft size={15} />
+                      <span className="hidden sm:inline">{lang === 'ar' ? 'السابق' : 'Prev'}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalUserPages }, (_, idx) => idx + 1)
+                        .filter(p => p === 1 || p === totalUserPages || Math.abs(p - userPage) <= 1)
+                        .map((p, idx, arr) => (
+                          <React.Fragment key={p}>
+                            {idx > 0 && arr[idx - 1] !== p - 1 && (
+                              <span className="text-slate-600 px-1">...</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setUserPage(p)}
+                              className={`w-7 h-7 rounded-xl font-bold transition-all ${
+                                userPage === p 
+                                  ? 'bg-emerald-600 text-white shadow-sm' 
+                                  : 'text-slate-400 hover:bg-slate-800'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        ))}
                     </div>
 
-                    <span className="px-3 py-1 rounded-xl text-xs font-semibold bg-slate-800 text-emerald-400 border border-slate-700">
-                      User Account
-                    </span>
+                    <button
+                      type="button"
+                      disabled={userPage >= totalUserPages}
+                      onClick={() => setUserPage(p => Math.min(p + 1, totalUserPages))}
+                      className={`p-2 rounded-xl border flex items-center gap-1 transition-all ${
+                        userPage >= totalUserPages 
+                          ? 'border-slate-800 text-slate-600 cursor-not-allowed' 
+                          : 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">{lang === 'ar' ? 'التالي' : 'Next'}</span>
+                      <ChevronRight size={15} />
+                    </button>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}

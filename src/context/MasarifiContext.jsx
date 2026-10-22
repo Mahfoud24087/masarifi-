@@ -1211,26 +1211,46 @@ export function MasarifiProvider({ children }) {
     return { success: true };
   }, [bumpReview]);
 
-  // Platform all users list (local + Supabase)
+  // Platform all users list (local + Supabase + expense count for activity tracking)
   const [allUsersList, setAllUsersList] = useState(() => load(KEYS.USERS, []));
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchAllProfiles() {
       try {
-        // Query the hardened public_profiles view (excludes sensitive passwords)
+        // 1. If current user is admin, fetch rich user stats via secure RPC (including transaction/expense count)
+        if (currentUser?.role === 'admin' || currentUser?.name?.toLowerCase() === 'admin') {
+          const { data: rpcUsers, error: rpcErr } = await supabase.rpc('admin_get_all_users', {
+            p_admin_id: currentUser.id,
+          });
+          if (!rpcErr && rpcUsers && rpcUsers.length > 0) {
+            setAllUsersList(
+              rpcUsers.map((u) => ({
+                id: u.id,
+                name: u.name,
+                role: u.role,
+                createdAt: u.created_at,
+                expenseCount: Number(u.expense_count) || 0,
+              }))
+            );
+            return;
+          }
+        }
+
+        // 2. Query the hardened public_profiles view (excludes sensitive passwords)
         const { data, error } = await supabase.from('public_profiles').select('id, name, created_at');
         if (data && data.length > 0) {
           const mapped = data.map((p) => ({
             id: p.id,
             name: p.name,
             createdAt: p.created_at,
+            expenseCount: 0,
           }));
           setAllUsersList(mapped);
         } else if (error) {
           // Fallback to profiles if public_profiles view not yet created
           const { data: fallbackData } = await supabase.from('profiles').select('id, name, created_at');
           if (fallbackData && fallbackData.length > 0) {
-            setAllUsersList(fallbackData.map(p => ({ id: p.id, name: p.name, createdAt: p.created_at })));
+            setAllUsersList(fallbackData.map(p => ({ id: p.id, name: p.name, createdAt: p.created_at, expenseCount: 0 })));
           }
         }
       } catch {}
