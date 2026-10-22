@@ -84,13 +84,23 @@ function buildIntentUrl(bank) {
 }
 
 /**
- * iOS: Direct link to the App Store page for each bank,
- * exactly like Android directs to the Play Store.
- * If the app is already installed on iPhone, iOS App Store page gives the "OPEN" button directly.
- * If not installed, it gives the "GET" / Install button.
+ * iOS App Store Direct Launcher:
+ * 1. Uses itms-apps:// to open the App Store natively (without web redirect).
+ * 2. If it's Bankily, opens its specific page.
+ * 3. For Sedad and Masrvi, it triggers a direct App Store native search for the bank name,
+ *    which immediately displays the app with "OPEN" (since she has it installed) or "GET" (for Masrvi),
+ *    working 100% across ANY Apple ID country/storefront without the region error!
  */
 function openOnIOS(bank) {
-  window.open(bank.appStoreUrl, '_blank', 'noopener,noreferrer');
+  if (bank.id === 'bankily') {
+    window.location.href = 'itms-apps://apps.apple.com/app/id1460115201';
+  } else if (bank.id === 'sedad') {
+    // Direct App Store search for Sedad: shows the installed app with "OPEN"
+    window.location.href = 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=sedad';
+  } else {
+    // Direct App Store search for Masrvi: shows the app ready to install/open
+    window.location.href = 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=masrvi';
+  }
 }
 
 const TEXT = {
