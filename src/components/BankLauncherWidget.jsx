@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { ExternalLink, Check, X, ArrowUpRight } from 'lucide-react';
 
-// The 3 Mauritanian Digital Banks configuration with exact Google Play & iOS IDs
+// The 3 Mauritanian Digital Banks with correct intent schemes
 export const MAURITANIAN_BANKS = [
   {
     id: 'bankily',
@@ -13,49 +13,7 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-emerald-50 text-emerald-800',
     bgDark: 'bg-emerald-950/40 text-emerald-300',
     androidPackage: 'mr.bpm.digitalbanking.consumer',
-    iosScheme: 'bankily://',
-    customScheme: 'bankily://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
-    appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
-  },
-  {
-    id: 'masrvi',
-    name: 'Masrvi',
-    nameAr: 'مصرفي',
-    color: 'from-rose-600 to-red-700',
-    border: 'border-rose-500/30',
-    bgLight: 'bg-rose-50 text-rose-800',
-    bgDark: 'bg-rose-950/40 text-rose-300',
-    androidPackage: 'com.tagpay.mwallet.masrvi',
-    iosScheme: 'masrvi://',
-    customScheme: 'masrvi://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
-    appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
-  },
-  {
-    id: 'sedad',
-    name: 'Sedad',
-    nameAr: 'سداد',
-    color: 'from-blue-600 to-indigo-700',
-    border: 'border-blue-500/30',
-    bgLight: 'bg-blue-50 text-blue-800',
-    bgDark: 'bg-blue-950/40 text-blue-300',
-    androidPackage: 'mr.digi.sedad',
-    iosScheme: 'sedad://',
-    customScheme: 'sedad://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
-    appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
-  },
-];
-  {
-    id: 'bankily',
-    name: 'Bankily',
-    nameAr: 'بنكيلي',
-    color: 'from-emerald-600 to-teal-700',
-    border: 'border-emerald-500/30',
-    bgLight: 'bg-emerald-50 text-emerald-800',
-    bgDark: 'bg-emerald-950/40 text-emerald-300',
-    androidPackage: 'mr.bpm.digitalbanking.consumer',
+    scheme: 'bankily',
     iosScheme: 'bankily://',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
     appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
@@ -69,6 +27,7 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-rose-50 text-rose-800',
     bgDark: 'bg-rose-950/40 text-rose-300',
     androidPackage: 'com.tagpay.mwallet.masrvi',
+    scheme: 'masrvi',
     iosScheme: 'masrvi://',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
     appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
@@ -82,11 +41,25 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-blue-50 text-blue-800',
     bgDark: 'bg-blue-950/40 text-blue-300',
     androidPackage: 'mr.digi.sedad',
+    scheme: 'sedad',
     iosScheme: 'sedad://',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
     appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
   },
 ];
+
+// Detect platform once
+const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+// Build the correct href for each bank button
+function getBankHref(bank) {
+  if (isIOS) {
+    return bank.iosScheme;
+  }
+  // Android: Use the exact intent:// format with scheme + package
+  // This tells Chrome: "open the app that registered this scheme + package"
+  return `intent://#Intent;scheme=${bank.scheme};package=${bank.androidPackage};end;`;
+}
 
 export default function BankLauncherWidget() {
   const { user, isDark, isRTL, lang, setShowExpenseForm, setEditingExpense } = useMasarifi();
@@ -113,32 +86,11 @@ export default function BankLauncherWidget() {
 
   if (!isBetaTester) return null;
 
-// Updated opening logic: direct intent link inside a temporary anchor triggered synchronously
-  const handleOpenBank = (bank) => {
-    // Record that user opened this bank
+  // Record bank click (called via onClick on the <a> tag — runs before navigation)
+  const handleBankClick = (bank) => {
     sessionStorage.setItem('masarifi_pending_bank_return', bank.id);
     setLastLaunchedBank(bank.id);
-
-    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-
-    if (isIOS) {
-      // iOS custom scheme (if defined) – fallback to App Store after short delay
-      window.location.href = bank.iosScheme;
-      setTimeout(() => {
-        window.open(bank.appStoreUrl, '_blank');
-      }, 1800);
-    } else {
-      // Android – Build an explicit intent URL that launches the app's main activity.
-      // This must be executed as a direct user gesture; we create an <a> element and click it synchronously.
-      const intentUrl = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
-      const link = document.createElement('a');
-      link.href = intentUrl;
-      // Append to DOM to make the click work in Chrome, then trigger click immediately.
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      // No fallback to Play Store – if the app is not installed the click simply does nothing.
-    }
+    // Don't preventDefault — let the <a> tag navigate to the intent:// URL naturally
   };
 
   const handleConfirmRecord = (bankId) => {
@@ -188,7 +140,7 @@ export default function BankLauncherWidget() {
             {lang === 'ar'
               ? `أهلاً بعودتك من ${activeBankObj.nameAr}! 👋 هل أرسلت أو دفعت أموالاً للتو؟`
               : lang === 'fr'
-              ? `De retour de ${activeBankObj.name} ! Avez-vous envoyé de l’argent ?`
+              ? `De retour de ${activeBankObj.name} ! Avez-vous envoyé de l'argent ?`
               : `Back from ${activeBankObj.name}! Did you send or spend money?`}
           </p>
           <div className="flex items-center gap-2 mt-3">
@@ -227,12 +179,14 @@ export default function BankLauncherWidget() {
           </span>
         </div>
 
+        {/* KEY FIX: Using <a> tags with intent:// href so Chrome treats it as a real user-gesture link */}
         <div className="grid grid-cols-3 gap-2">
           {MAURITANIAN_BANKS.map((b) => (
-            <button
+            <a
               key={b.id}
-              onClick={() => handleOpenBank(b)}
-              className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md ${
+              href={getBankHref(b)}
+              onClick={() => handleBankClick(b)}
+              className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md no-underline ${
                 isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
               }`}
             >
@@ -240,7 +194,7 @@ export default function BankLauncherWidget() {
                 <ArrowUpRight size={16} strokeWidth={2.5} />
               </div>
               <span className="text-xs font-black">{lang === 'ar' ? b.nameAr : b.name}</span>
-            </button>
+            </a>
           ))}
         </div>
       </div>
