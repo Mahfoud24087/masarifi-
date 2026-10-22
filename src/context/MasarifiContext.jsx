@@ -157,31 +157,66 @@ export function MasarifiProvider({ children }) {
       return { success: false, error: 'noDatabase' };
     }
     try {
-      // Check name uniqueness
+      const hashed = await hashPassword(password);
+
+      // 1. Try secure server-side RPC register_user first (works even when direct profiles table SELECT is revoked)
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('register_user', {
+          p_name: cleanName,
+          p_password: hashed,
+        });
+
+        if (!rpcErr && rpcRes && rpcRes.length > 0) {
+          const res = rpcRes[0];
+          if (!res.success && res.error_code === 'nameExists') {
+            return { success: false, error: 'nameExists' };
+          }
+          if (res.success && res.id) {
+            const safe = {
+              id: res.id,
+              name: res.name || cleanName,
+              role: res.role || 'user',
+              createdAt: res.created_at,
+            };
+            save(KEYS.CURRENT_USER, safe);
+            setCurrentUser(safe);
+            setScreen('app');
+            setActiveTab('home');
+            return { success: true };
+          }
+        }
+      } catch (e) {
+        console.debug('RPC register_user fallback:', e);
+      }
+
+      // 2. Direct Table Fallback: check uniqueness via public_profiles view
       const { data: existing } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id')
         .ilike('name', cleanName)
         .maybeSingle();
 
       if (existing) return { success: false, error: 'nameExists' };
 
-      // Hash password before storing
-      const hashed = await hashPassword(password);
-
-      const { data: newProfile, error } = await supabase
+      // Direct insert
+      const { data: insertedList, error } = await supabase
         .from('profiles')
         .insert([{ name: cleanName, password: hashed, role: 'user' }])
-        .select()
-        .single();
+        .select('id, name, role, created_at');
 
       if (error) {
         if (error.code === '23505') return { success: false, error: 'nameExists' };
         return { success: false, error: 'serverError' };
       }
 
+      const newProfile = insertedList?.[0];
       if (newProfile) {
-        const safe = { id: newProfile.id, name: newProfile.name, role: newProfile.role || 'user', createdAt: newProfile.created_at };
+        const safe = {
+          id: newProfile.id,
+          name: newProfile.name,
+          role: newProfile.role || 'user',
+          createdAt: newProfile.created_at,
+        };
         save(KEYS.CURRENT_USER, safe);
         setCurrentUser(safe);
         setScreen('app');
