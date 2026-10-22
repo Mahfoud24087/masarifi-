@@ -15,6 +15,8 @@ export const MAURITANIAN_BANKS = [
     name: 'Bankily',
     nameAr: 'بنكيلي',
     pkg: 'mr.bpm.digitalbanking.consumer',
+    iosScheme: 'bankily://',
+    appStoreUrl: 'https://apps.apple.com/app/bankily/id1460115201',
     color: 'from-emerald-500 to-emerald-700',
     bgLight: 'bg-emerald-50',
     bgDark: 'bg-emerald-950/40',
@@ -27,6 +29,8 @@ export const MAURITANIAN_BANKS = [
     name: 'Masrvi',
     nameAr: 'مصرفي',
     pkg: 'com.tagpay.mwallet.masrvi',
+    iosScheme: 'masrvi://',
+    appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
     color: 'from-rose-500 to-red-700',
     bgLight: 'bg-rose-50',
     bgDark: 'bg-rose-950/40',
@@ -39,6 +43,8 @@ export const MAURITANIAN_BANKS = [
     name: 'Sedad',
     nameAr: 'السداد',
     pkg: 'mr.digi.sedad',
+    iosScheme: 'sedad://',
+    appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
     color: 'from-indigo-500 to-blue-700',
     bgLight: 'bg-blue-50',
     bgDark: 'bg-blue-950/40',
@@ -54,9 +60,12 @@ export const MAURITANIAN_BANKS = [
 const isAndroid = () =>
   typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
 
+const isIOS = () =>
+  typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+
 /**
- * Launcher intent: opens the installed app directly by package name.
- * If the app is not installed, Chrome goes to the Play Store instead.
+ * Android: launcher intent opens the installed app directly by package name.
+ * Falls back to Play Store if the app is not installed.
  */
 function buildIntentUrl(bank) {
   const fallback = encodeURIComponent(playStoreUrl(bank.pkg));
@@ -68,6 +77,20 @@ function buildIntentUrl(bank) {
     `S.browser_fallback_url=${fallback};` +
     'end'
   );
+}
+
+/**
+ * iOS: use custom URL scheme (e.g. bankily://) to open the native app.
+ * If not installed, falls back to App Store after 1.5s.
+ */
+function openOnIOS(bank) {
+  window.location.href = bank.iosScheme;
+  // After 1.5s, if the user is still on the page the app wasn't installed → open App Store
+  setTimeout(() => {
+    if (!document.hidden) {
+      window.open(bank.appStoreUrl, '_blank');
+    }
+  }, 1500);
 }
 
 const TEXT = {
@@ -90,10 +113,12 @@ export default function BankLauncherWidget() {
 
   const pendingBankRef = useRef(null);
   const [reminderBank, setReminderBank] = useState(null);
-  const android = isAndroid();
 
-  // Feature Flag: ONLY visible to user "Anonyme" for safe testing!
-  const isBetaTester = user?.name?.trim().toLowerCase() === 'anonyme';
+  // Beta testers: only these accounts can see the widget
+  // Anonyme    → Android tester
+  // Zeinbou khairy → iOS tester
+  const BETA_TESTERS = ['anonyme', 'zeinbou khairy'];
+  const isBetaTester = BETA_TESTERS.includes(user?.name?.trim().toLowerCase());
 
   // Only remember which bank was tapped. Do NOT preventDefault or window.open —
   // that would break the intent navigation.
@@ -213,28 +238,55 @@ export default function BankLauncherWidget() {
           Other:   opens the Play Store page in a new tab.
         */}
         <div className="grid grid-cols-3 gap-2">
-          {MAURITANIAN_BANKS.map((b) => (
-            <a
-              key={b.id}
-              href={android ? buildIntentUrl(b) : playStoreUrl(b.pkg)}
-              {...(!android && { target: '_blank', rel: 'noopener noreferrer' })}
-              onClick={() => handleBankClick(b)}
-              className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md no-underline ${
-                isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center mb-1.5 shadow-sm`}
+          {MAURITANIAN_BANKS.map((b) => {
+            const android = isAndroid();
+            const ios = isIOS();
+
+            // iOS: custom scheme opens native app; we handle fallback via JS (not href)
+            if (ios) {
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => {
+                    handleBankClick(b);
+                    openOnIOS(b);
+                  }}
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md ${
+                    isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center mb-1.5 shadow-sm`}>
+                    <ArrowUpRight size={16} strokeWidth={2.5} />
+                  </div>
+                  <span className={`text-xs font-black ${isDark ? b.textDark : b.textLight}`}>
+                    {bankName(b)}
+                  </span>
+                </button>
+              );
+            }
+
+            // Android: intent:// href on a real <a> tag — Chrome opens native app directly
+            // Other (desktop): opens Play Store in new tab
+            return (
+              <a
+                key={b.id}
+                href={android ? buildIntentUrl(b) : playStoreUrl(b.pkg)}
+                {...(!android && { target: '_blank', rel: 'noopener noreferrer' })}
+                onClick={() => handleBankClick(b)}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md no-underline ${
+                  isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
+                }`}
               >
-                <ArrowUpRight size={16} strokeWidth={2.5} />
-              </div>
-              <span
-                className={`text-xs font-black ${isDark ? b.textDark : b.textLight}`}
-              >
-                {bankName(b)}
-              </span>
-            </a>
-          ))}
+                <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center mb-1.5 shadow-sm`}>
+                  <ArrowUpRight size={16} strokeWidth={2.5} />
+                </div>
+                <span className={`text-xs font-black ${isDark ? b.textDark : b.textLight}`}>
+                  {bankName(b)}
+                </span>
+              </a>
+            );
+          })}
         </div>
       </div>
     </div>
