@@ -100,7 +100,30 @@ Rules for Responses:
     content: prompt,
   });
 
-  // Try models with automatic fallback on rate-limits
+  // 1. Try secure backend proxy first (keeps API keys protected on the server)
+  try {
+    const proxyRes = await fetch('/api/ai-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages,
+        temperature: 0.6,
+        max_tokens: 2048,
+      }),
+    });
+    if (proxyRes.ok) {
+      const pData = await proxyRes.json();
+      const pContent = pData?.choices?.[0]?.message?.content;
+      if (pContent) {
+        return { success: true, text: pContent.trim() };
+      }
+    }
+  } catch (err) {
+    // If not deployed on Vercel with serverless functions yet, fall back gracefully
+    console.debug('Proxy bypassed, falling back to direct Groq API:', err);
+  }
+
+  // 2. Direct client fallback with models list
   for (const model of GROQ_MODELS) {
     try {
       const res = await fetch(GROQ_API_URL, {
