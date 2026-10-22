@@ -1,25 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import translations from '../i18n/translations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { hashPassword } from '../lib/hash';
 import { EXPENSE_CATEGORIES } from '../models/categories';
 
 const MasarifiContext = createContext(null);
 
 const KEYS = {
-  LANG: 'masarifi_lang',
-  THEME: 'masarifi_theme',
-  CURRENT_USER: 'masarifi_current_user',
-  USERS: 'masarifi_users',
-  EXPENSES: 'masarifi_expenses',
-  BUDGETS: 'masarifi_budgets',
-  REVIEWS: 'masarifi_reviews',
-  TICKETS: 'masarifi_support_tickets',
-  ADMIN_LOGGED: 'masarifi_admin_logged_in',
+  LANG:             'masarifi_lang',
+  THEME:            'masarifi_theme',
+  CURRENT_USER:     'masarifi_current_user',
+  BUDGETS:          'masarifi_budgets',
+  ADMIN_LOGGED:     'masarifi_admin_logged_in',
   DISMISSED_NOTIFS: 'masarifi_dismissed_ticket_notifs',
-  DISMISSED_BUDGETS: 'masarifi_dismissed_budget_alerts',
-  ADMIN_ACCOUNT: 'masarifi_admin_account',
-  CURRENT_SCREEN: 'masarifi_current_screen',
-  ACTIVE_TAB: 'masarifi_active_tab',
+  DISMISSED_BUDGETS:'masarifi_dismissed_budget_alerts',
+  CURRENT_SCREEN:   'masarifi_current_screen',
+  ACTIVE_TAB:       'masarifi_active_tab',
 };
 
 const load = (key, fallback) => {
@@ -152,91 +148,101 @@ export function MasarifiProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────
   const signUp = useCallback(async (name, password) => {
     const cleanName = name.trim();
-    const users = load(KEYS.USERS, []);
-
-    // 1. Supabase check & insert if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: existing } = await supabase
-          .from('profiles')
-          .select('id')
-          .ilike('name', cleanName)
-          .maybeSingle();
-
-        if (existing) return { success: false, error: 'nameExists' };
-
-        const { data: newProfile, error } = await supabase
-          .from('profiles')
-          .insert([{ name: cleanName, password }])
-          .select()
-          .single();
-
-        if (error) {
-          if (error.code === '23505') return { success: false, error: 'nameExists' };
-        } else if (newProfile) {
-          const safe = { id: newProfile.id, name: newProfile.name, createdAt: newProfile.created_at };
-          save(KEYS.CURRENT_USER, safe);
-          setCurrentUser(safe);
-          setScreen('app');
-          setActiveTab('home');
-          return { success: true };
-        }
-      } catch (err) {
-        console.warn('Supabase signup fallback to local:', err);
-      }
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'noDatabase' };
     }
+    try {
+      // Check name uniqueness
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('name', cleanName)
+        .maybeSingle();
 
-    // Local fallback
-    if (users.find((u) => u.name.toLowerCase() === cleanName.toLowerCase()))
-      return { success: false, error: 'nameExists' };
-    const nu = { id: genId(), name: cleanName, password, createdAt: new Date().toISOString() };
-    save(KEYS.USERS, [...users, nu]);
-    const safe = { id: nu.id, name: nu.name, createdAt: nu.createdAt };
-    save(KEYS.CURRENT_USER, safe); setCurrentUser(safe);
-    setScreen('app'); setActiveTab('home');
-    return { success: true };
+      if (existing) return { success: false, error: 'nameExists' };
+
+      // Hash password before storing
+      const hashed = await hashPassword(password);
+
+      const { data: newProfile, error } = await supabase
+        .from('profiles')
+        .insert([{ name: cleanName, password: hashed, role: 'user' }])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') return { success: false, error: 'nameExists' };
+        return { success: false, error: 'serverError' };
+      }
+
+      if (newProfile) {
+        const safe = { id: newProfile.id, name: newProfile.name, role: newProfile.role || 'user', createdAt: newProfile.created_at };
+        save(KEYS.CURRENT_USER, safe);
+        setCurrentUser(safe);
+        setScreen('app');
+        setActiveTab('home');
+        return { success: true };
+      }
+    } catch (err) {
+      console.warn('signUp error:', err);
+      return { success: false, error: 'serverError' };
+    }
+    return { success: false, error: 'serverError' };
   }, []);
 
   const signIn = useCallback(async (name, password) => {
     const cleanName = name.trim().toLowerCase();
-
-    // 1. Try Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .ilike('name', cleanName)
-          .maybeSingle();
-
-        if (profile && profile.password === password) {
-          const safe = { id: profile.id, name: profile.name, createdAt: profile.created_at };
-          save(KEYS.CURRENT_USER, safe);
-          // Restore cloud budgets into localStorage so they're available immediately
-          if (profile.budgets && typeof profile.budgets === 'object') {
-            const key = `${KEYS.BUDGETS}_${profile.id}`;
-            save(key, profile.budgets);
-          }
-          setCurrentUser(safe);
-          setScreen('app');
-          setActiveTab('home');
-          return { success: true };
-        } else if (profile && profile.password !== password) {
-          return { success: false, error: 'invalidCredentials' };
-        }
-      } catch (err) {
-        console.warn('Supabase signin fallback to local:', err);
-      }
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'noDatabase' };
     }
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('name', cleanName)
+        .maybeSingle();
 
-    // Local fallback
-    const users = load(KEYS.USERS, []);
-    const user = users.find((u) => u.name.toLowerCase() === cleanName && u.password === password);
-    if (!user) return { success: false, error: 'invalidCredentials' };
-    const safe = { id: user.id, name: user.name, createdAt: user.createdAt };
-    save(KEYS.CURRENT_USER, safe); setCurrentUser(safe);
-    setScreen('app'); setActiveTab('home');
-    return { success: true };
+      if (!profile) return { success: false, error: 'invalidCredentials' };
+
+      // Try hashed password first
+      const hashed = await hashPassword(password);
+      let passwordMatch = profile.password === hashed;
+
+      // Migration path: if stored password is plain-text, compare directly
+      if (!passwordMatch && profile.password === password) {
+        passwordMatch = true;
+        // Re-hash and update in DB silently
+        supabase.from('profiles').update({ password: hashed }).eq('id', profile.id).then(() => {});
+      }
+
+      if (!passwordMatch) return { success: false, error: 'invalidCredentials' };
+
+      const role = profile.role || 'user';
+      const safe = { id: profile.id, name: profile.name, role, createdAt: profile.created_at };
+      save(KEYS.CURRENT_USER, safe);
+
+      // Load cloud budgets into local cache
+      if (profile.budgets && typeof profile.budgets === 'object') {
+        save(`${KEYS.BUDGETS}_${profile.id}`, profile.budgets);
+      }
+
+      setCurrentUser(safe);
+
+      // Route based on role
+      if (role === 'admin') {
+        setIsAdminLoggedIn(true);
+        save(KEYS.ADMIN_LOGGED, true);
+        setScreen('admin');
+      } else {
+        setScreen('app');
+        setActiveTab('home');
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.warn('signIn error:', err);
+      return { success: false, error: 'serverError' };
+    }
   }, []);
 
   const signOut = useCallback(() => {
@@ -271,18 +277,26 @@ export function MasarifiProvider({ children }) {
     if (isSupabaseConfigured && supabase) {
       try {
         const { data } = await supabase.from('profiles').select('password').eq('id', currentUser.id).single();
-        if (data && data.password !== currentPass) return { success: false, error: 'wrongPassword' };
-        await supabase.from('profiles').update({ password: newPass }).eq('id', currentUser.id);
+        if (!data) return { success: false, error: 'wrongPassword' };
+
+        const currentHashed = await hashPassword(currentPass);
+        let match = data.password === currentHashed;
+        if (!match && data.password === currentPass) {
+          match = true;
+        }
+
+        if (!match) return { success: false, error: 'wrongPassword' };
+
+        const newHashed = await hashPassword(newPass);
+        const { error } = await supabase.from('profiles').update({ password: newHashed }).eq('id', currentUser.id);
+        if (error) return { success: false, error: 'serverError' };
         return { success: true };
-      } catch {}
+      } catch (err) {
+        console.warn('changePassword error:', err);
+        return { success: false, error: 'serverError' };
+      }
     }
-    const users = load(KEYS.USERS, []);
-    const idx   = users.findIndex((u) => u.id === currentUser.id);
-    if (idx === -1) return { success: false };
-    if (users[idx].password !== currentPass) return { success: false, error: 'wrongPassword' };
-    users[idx].password = newPass;
-    save(KEYS.USERS, users);
-    return { success: true };
+    return { success: false, error: 'noDatabase' };
   }, [currentUser]);
 
   // ── Budgets ──────────────────────────────────────────────────────
@@ -1104,13 +1118,29 @@ export function MasarifiProvider({ children }) {
     return { success: false, error: 'invalidCredentials' };
   }, []);
 
-  const updateAdminProfile = useCallback((updates) => {
+  const updateAdminProfile = useCallback(async (updates) => {
+    if (isSupabaseConfigured && supabase && currentUser) {
+      try {
+        const payload = {};
+        if (updates.name) payload.name = updates.name;
+        if (updates.password) {
+          payload.password = await hashPassword(updates.password);
+        }
+        await supabase.from('profiles').update(payload).eq('id', currentUser.id);
+        const updatedUser = { ...currentUser, ...updates };
+        delete updatedUser.password;
+        save(KEYS.CURRENT_USER, updatedUser);
+        setCurrentUser(updatedUser);
+      } catch (err) {
+        console.warn('updateAdminProfile Supabase error:', err);
+      }
+    }
     const currentAdmin = load(KEYS.ADMIN_ACCOUNT, DEFAULT_ADMIN);
     const updated = { ...currentAdmin, ...updates };
     setAdminAccount(updated);
     save(KEYS.ADMIN_ACCOUNT, updated);
     return { success: true };
-  }, []);
+  }, [currentUser]);
 
   const logoutAdmin = useCallback(() => {
     setIsAdminLoggedIn(false);
