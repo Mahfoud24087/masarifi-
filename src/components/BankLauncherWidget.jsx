@@ -84,12 +84,13 @@ function buildIntentUrl(bank) {
 }
 
 /**
- * iOS: Opens via verified HTTPS URL / Universal Link in a clean tab.
- * If Universal Links are enabled by the bank on iOS, iOS opens the app immediately.
- * If not or not installed, the official web portal opens without Safari "invalid address" popup!
+ * iOS: Direct link to the App Store page for each bank,
+ * exactly like Android directs to the Play Store.
+ * If the app is already installed on iPhone, iOS App Store page gives the "OPEN" button directly.
+ * If not installed, it gives the "GET" / Install button.
  */
 function openOnIOS(bank) {
-  window.open(bank.iosUrl || bank.appStoreUrl, '_blank', 'noopener,noreferrer');
+  window.open(bank.appStoreUrl, '_blank', 'noopener,noreferrer');
 }
 
 const TEXT = {
