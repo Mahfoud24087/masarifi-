@@ -84,18 +84,14 @@ function buildIntentUrl(bank) {
 }
 
 /**
- * iOS Direct App Launcher:
- * Directly triggers the native app URL scheme (e.g., bankily://, sedad://, masrvi://)
- * This opens the installed app directly on iPhone without going to App Store!
+ * iOS Clean & Safe Launcher:
+ * Uses clean App Store direct links in a new tab.
+ * Zero Safari "invalid address" alerts.
+ * Shows "OPEN" button directly if installed, or "GET" if not installed.
  */
 function openOnIOS(bank) {
-  if (bank.id === 'bankily') {
-    window.location.href = 'bankily://';
-  } else if (bank.id === 'sedad') {
-    window.location.href = 'sedad://';
-  } else {
-    window.location.href = 'masrvi://';
-  }
+  const targetUrl = bank.appStoreUrl || `https://apps.apple.com/app/id${bank.id === 'bankily' ? '1460115201' : bank.id === 'sedad' ? '1613951511' : '1540766096'}`;
+  window.open(targetUrl, '_blank', 'noopener,noreferrer');
 }
 
 const TEXT = {
