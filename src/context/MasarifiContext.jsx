@@ -212,6 +212,11 @@ export function MasarifiProvider({ children }) {
         if (profile && profile.password === password) {
           const safe = { id: profile.id, name: profile.name, createdAt: profile.created_at };
           save(KEYS.CURRENT_USER, safe);
+          // Restore cloud budgets into localStorage so they're available immediately
+          if (profile.budgets && typeof profile.budgets === 'object') {
+            const key = `${KEYS.BUDGETS}_${profile.id}`;
+            save(key, profile.budgets);
+          }
           setCurrentUser(safe);
           setScreen('app');
           setActiveTab('home');
@@ -295,9 +300,17 @@ export function MasarifiProvider({ children }) {
     const current = load(key, {});
     const updated = { ...current, [category]: parseFloat(amount) || 0 };
     save(key, updated);
+    // Sync budgets to Supabase profiles table
+    if (isSupabaseConfigured && supabase && currentUser) {
+      supabase
+        .from('profiles')
+        .update({ budgets: updated })
+        .eq('id', currentUser.id)
+        .then(({ error }) => { if (error) console.warn('Budget sync error:', error.message); });
+    }
     // Force re-render by bumping a counter
     setExpenseVer((v) => v + 1);
-  }, [getBudgetKey]);
+  }, [getBudgetKey, currentUser]);
 
   const getBudget = useCallback((category) => {
     const key = getBudgetKey();
