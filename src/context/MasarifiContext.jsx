@@ -636,7 +636,11 @@ export function MasarifiProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('expenses').delete().eq('id', id);
+        if (currentUser?.id) {
+          await supabase.from('expenses').delete().eq('id', id).eq('user_id', currentUser.id);
+        } else {
+          await supabase.from('expenses').delete().eq('id', id);
+        }
       } catch (err) {
         console.warn('Supabase delete expense error:', err);
       }
@@ -1213,7 +1217,8 @@ export function MasarifiProvider({ children }) {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchAllProfiles() {
       try {
-        const { data } = await supabase.from('profiles').select('id, name, created_at');
+        // Query the hardened public_profiles view (excludes sensitive passwords)
+        const { data, error } = await supabase.from('public_profiles').select('id, name, created_at');
         if (data && data.length > 0) {
           const mapped = data.map((p) => ({
             id: p.id,
@@ -1221,6 +1226,12 @@ export function MasarifiProvider({ children }) {
             createdAt: p.created_at,
           }));
           setAllUsersList(mapped);
+        } else if (error) {
+          // Fallback to profiles if public_profiles view not yet created
+          const { data: fallbackData } = await supabase.from('profiles').select('id, name, created_at');
+          if (fallbackData && fallbackData.length > 0) {
+            setAllUsersList(fallbackData.map(p => ({ id: p.id, name: p.name, createdAt: p.created_at })));
+          }
         }
       } catch {}
     }
