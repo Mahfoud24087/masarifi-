@@ -9,6 +9,7 @@ import { ArrowUpRight, X, Check } from 'lucide-react';
 const playStoreUrl = (pkg) =>
   `https://play.google.com/store/apps/details?id=${pkg}`;
 
+// 3 Mauritanian Banks configuration
 export const MAURITANIAN_BANKS = [
   {
     id: 'bankily',
@@ -16,6 +17,7 @@ export const MAURITANIAN_BANKS = [
     nameAr: 'بنكيلي',
     pkg: 'mr.bpm.digitalbanking.consumer',
     iosScheme: 'bankily://',
+    iosUrl: 'https://www.bankily.mr',
     appStoreUrl: 'https://apps.apple.com/app/bankily/id1460115201',
     color: 'from-emerald-500 to-emerald-700',
     bgLight: 'bg-emerald-50',
@@ -30,6 +32,7 @@ export const MAURITANIAN_BANKS = [
     nameAr: 'مصرفي',
     pkg: 'com.tagpay.mwallet.masrvi',
     iosScheme: 'masrvi://',
+    iosUrl: 'https://masrvi.mr',
     appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
     color: 'from-rose-500 to-red-700',
     bgLight: 'bg-rose-50',
@@ -44,6 +47,7 @@ export const MAURITANIAN_BANKS = [
     nameAr: 'السداد',
     pkg: 'mr.digi.sedad',
     iosScheme: 'sedad://',
+    iosUrl: 'https://web.sedad.sbs',
     appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
     color: 'from-indigo-500 to-blue-700',
     bgLight: 'bg-blue-50',
@@ -80,17 +84,12 @@ function buildIntentUrl(bank) {
 }
 
 /**
- * iOS: use custom URL scheme (e.g. bankily://) to open the native app.
- * If not installed, falls back to App Store after 1.5s.
+ * iOS: Opens via verified HTTPS URL / Universal Link in a clean tab.
+ * If Universal Links are enabled by the bank on iOS, iOS opens the app immediately.
+ * If not or not installed, the official web portal opens without Safari "invalid address" popup!
  */
 function openOnIOS(bank) {
-  window.location.href = bank.iosScheme;
-  // After 1.5s, if the user is still on the page the app wasn't installed → open App Store
-  setTimeout(() => {
-    if (!document.hidden) {
-      window.open(bank.appStoreUrl, '_blank');
-    }
-  }, 1500);
+  window.open(bank.iosUrl || bank.appStoreUrl, '_blank', 'noopener,noreferrer');
 }
 
 const TEXT = {
