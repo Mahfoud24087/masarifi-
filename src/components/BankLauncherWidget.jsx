@@ -122,16 +122,24 @@ export default function BankLauncherWidget() {
 
   const bankName = (b) => (lang === 'ar' ? b.nameAr : b.name);
 
-  // When user confirms they made a payment, open the expense form pre-filled
+  // When user confirms they made a payment, open a NEW expense form (not edit).
+  // We must set editingExpense to null first so the form calls addExpense (not updateExpense).
+  // We then use sessionStorage to pass pre-fill hints that the form reads on mount.
   const handleLogExpense = (bank) => {
-    setEditingExpense({
-      title: `${bank.name} Transfer`,
-      amount: '',
-      category: 'other',
-      date: new Date().toISOString().split('T')[0],
-      notes: `Via ${bank.name}`,
-      type: 'expense',
-    });
+    // Clear any existing editing state so the form goes into "add new" mode
+    setEditingExpense(null);
+    // Store pre-fill data so ExpenseFormSheet can pick it up via sessionStorage
+    sessionStorage.setItem(
+      'masarifi_prefill_expense',
+      JSON.stringify({
+        title: `${bank.name} Transfer`,
+        amount: '',
+        category: 'other',
+        date: new Date().toISOString().split('T')[0],
+        notes: `Via ${bank.name}`,
+        type: 'expense',
+      })
+    );
     setShowExpenseForm(true);
     setReminderBank(null);
   };

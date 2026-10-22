@@ -45,9 +45,31 @@ export default function ExpenseFormSheet() {
       setNotes(editingExpense.notes || '');
       setRecurring(editingExpense.recurring || false);
     } else {
-      setType('expense'); setTitle(''); setAmount(''); setCategory('food');
-      setDate(new Date().toISOString().slice(0, 10)); setNotes(''); setRecurring(false); setCustomOther('');
-      setSelectedColor('');
+      // Check for pre-fill data from bank launcher (new expense, not editing)
+      const prefillRaw = sessionStorage.getItem('masarifi_prefill_expense');
+      if (prefillRaw) {
+        try {
+          const prefill = JSON.parse(prefillRaw);
+          sessionStorage.removeItem('masarifi_prefill_expense'); // consume it
+          setType(prefill.type || 'expense');
+          setTitle(prefill.title || '');
+          setAmount(prefill.amount != null ? String(prefill.amount) : '');
+          setCategory(prefill.category || 'food');
+          setDate(prefill.date || new Date().toISOString().slice(0, 10));
+          setNotes(prefill.notes || '');
+          setRecurring(false);
+          setCustomOther('');
+          setSelectedColor('');
+        } catch {
+          setType('expense'); setTitle(''); setAmount(''); setCategory('food');
+          setDate(new Date().toISOString().slice(0, 10)); setNotes(''); setRecurring(false); setCustomOther('');
+          setSelectedColor('');
+        }
+      } else {
+        setType('expense'); setTitle(''); setAmount(''); setCategory('food');
+        setDate(new Date().toISOString().slice(0, 10)); setNotes(''); setRecurring(false); setCustomOther('');
+        setSelectedColor('');
+      }
     }
     setErrors({});
   }, [editingExpense, showExpenseForm]);
