@@ -82,14 +82,20 @@ export default function BankLauncherWidget() {
       window.location.href = bank.iosScheme;
       setTimeout(() => {
         window.open(bank.appStoreUrl, '_blank');
-      }, 1500);
+      }, 1800);
     } else {
-      // Android intent: opens app if installed, else falls back to Play Store automatically!
-      const intentUrl = `intent://#Intent;package=${bank.androidPackage};scheme=https;end;`;
-      window.location.href = intentUrl;
-      setTimeout(() => {
-        window.open(bank.playStoreUrl, '_blank');
-      }, 1500);
+      // Direct Android Application launch intent via package manager
+      // "action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER" forces the installed app to launch directly!
+      const directLaunchIntent = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
+      
+      // Fallback intent if not installed
+      const storeFallback = `market://details?id=${bank.androidPackage}`;
+      
+      try {
+        window.location.href = directLaunchIntent;
+      } catch (e) {
+        window.location.href = storeFallback;
+      }
     }
   };
 
