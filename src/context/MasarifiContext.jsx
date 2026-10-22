@@ -380,19 +380,31 @@ export function MasarifiProvider({ children }) {
   // ── Expenses ──────────────────────────────────────────────────────
   const bump = useCallback(() => setExpenseVer((v) => v + 1), []);
 
-  // Fetch expenses from Supabase on user sign-in
+  // Fetch expenses from Supabase on user sign-in securely
   useEffect(() => {
     if (!currentUser || !isSupabaseConfigured || !supabase) return;
     async function fetchSupabaseExpenses() {
       try {
-        const { data, error } = await supabase
-          .from('expenses')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('date', { ascending: false });
+        // 1. Try calling isolated secure RPC function first
+        let fetchedData = null;
+        const { data: rpcExpenses, error: rpcErr } = await supabase.rpc('get_user_expenses', {
+          p_user_id: currentUser.id,
+        });
 
-        if (!error && data) {
-          const mapped = data
+        if (!rpcErr && rpcExpenses) {
+          fetchedData = rpcExpenses;
+        } else {
+          // Fallback to direct query filtered by user_id
+          const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('date', { ascending: false });
+          if (!error && data) fetchedData = data;
+        }
+
+        if (fetchedData) {
+          const mapped = fetchedData
             .filter((d) => d.category !== '__support_ticket__')
             .map((d) => ({
               id: d.id,
