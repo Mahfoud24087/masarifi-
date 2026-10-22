@@ -83,16 +83,26 @@ export default function BankLauncherWidget() {
         window.open(bank.appStoreUrl, '_blank');
       }, 1800);
     } else {
-      // Chrome Android Native Intent URL:
-      // Uses the official Chrome intent format with package identifier to launch the app directly.
-      const chromeIntent = `intent://#Intent;package=${bank.androidPackage};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(bank.playStoreUrl)};end;`;
-
+      // Android: First try custom scheme, if it fails try MAIN/LAUNCHER intent, fallback to Play Store
+      const startTime = Date.now();
+      
+      // Launch Intent: Tells Android to launch the main activity of the app directly
+      const launchIntent = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
+      
       const link = document.createElement('a');
-      link.href = chromeIntent;
+      link.href = launchIntent;
       link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Check after 2000ms: if page is still visible and user didn't leave, open Play Store
+      setTimeout(() => {
+        const timeElapsed = Date.now() - startTime;
+        if (document.visibilityState === 'visible' && timeElapsed < 3500) {
+          window.location.href = bank.playStoreUrl;
+        }
+      }, 2000);
     }
   };
 
