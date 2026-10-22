@@ -83,26 +83,20 @@ export default function BankLauncherWidget() {
         window.open(bank.appStoreUrl, '_blank');
       }, 1800);
     } else {
-      // Android: First try custom scheme, if it fails try MAIN/LAUNCHER intent, fallback to Play Store
-      const startTime = Date.now();
+      // Android: Custom scheme direct trigger (works if registered, e.g., sedad://, bankily://)
+      // We first navigate to the scheme directly without falling back instantly to the store
+      const customScheme = bank.id === 'bankily' ? 'bankily://' : bank.id === 'sedad' ? 'sedad://' : 'masrvi://';
       
-      // Launch Intent: Tells Android to launch the main activity of the app directly
-      const launchIntent = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
-      
-      const link = document.createElement('a');
-      link.href = launchIntent;
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Direct intent format for modern Android Chrome:
+      // When scheme + package are provided together, Chrome matches the app specifically.
+      const intentUrl = `intent://#Intent;scheme=${bank.id};package=${bank.androidPackage};end;`;
 
-      // Check after 2000ms: if page is still visible and user didn't leave, open Play Store
-      setTimeout(() => {
-        const timeElapsed = Date.now() - startTime;
-        if (document.visibilityState === 'visible' && timeElapsed < 3500) {
-          window.location.href = bank.playStoreUrl;
-        }
-      }, 2000);
+      // Try intent first via direct location assign (must be direct user gesture):
+      try {
+        window.location.href = intentUrl;
+      } catch (e) {
+        window.location.href = customScheme;
+      }
     }
   };
 
