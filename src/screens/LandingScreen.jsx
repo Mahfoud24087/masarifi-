@@ -305,15 +305,15 @@ export default function LandingScreen() {
               {isIOS ? 'Apple iPhone (Safari)' : 'Android / Google Chrome'}
             </p>
 
-            <div className="space-y-3 text-xs font-semibold mb-6">
+                        <div className="space-y-3 text-xs font-semibold mb-6">
               <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
                 <span className="w-6 h-6 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">1</span>
                 <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
                   {lang === 'ar' 
-                    ? 'في متصفح هاتفك (Safari أو Chrome)، اضغط على زر الخيارات أو المشاركة (📤 / ⋮).' 
+                    ? 'عند فتح الموقع، ابحث عن زر المشاركة (Share 📤) واضغط عليه.' 
                     : lang === 'fr' 
-                    ? 'Dans votre navigateur (Safari ou Chrome), touchez le bouton Partager ou Menu (📤 / ⋮).' 
-                    : 'In your browser (Safari or Chrome), tap Share or Menu (📤 / ⋮).'}
+                    ? "Quand vous ouvrez le site, appuyez sur l'option Partager (Share 📤)." 
+                    : 'When you open the site, find the Share option (📤) and click on it.'}
                 </p>
               </div>
 
@@ -321,10 +321,10 @@ export default function LandingScreen() {
                 <span className="w-6 h-6 rounded-xl bg-blue-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">2</span>
                 <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
                   {lang === 'ar' 
-                    ? 'اختر «إضافة إلى الشاشة الرئيسية» (Add to Home Screen ➕).' 
+                    ? 'ستظهر لك خيارات، اضغط على «إضافة إلى الشاشة الرئيسية» (Add to Home Screen ➕).' 
                     : lang === 'fr' 
-                    ? 'Touchez « Sur l\'écran d\'accueil » ou « Installer l\'application » (➕).' 
-                    : 'Select "Add to Home Screen" or "Install App" (➕).'}
+                    ? "Touchez ensuite l'option « Sur l'écran d'accueil » (Add to Home Screen ➕)." 
+                    : 'Click on "Add to Home Screen" option (➕).'}
                 </p>
               </div>
 
@@ -332,10 +332,10 @@ export default function LandingScreen() {
                 <span className="w-6 h-6 rounded-xl bg-purple-500 text-white flex items-center justify-center font-black text-xs flex-shrink-0">3</span>
                 <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
                   {lang === 'ar' 
-                    ? 'اضغط على «إضافة»، وسيظهر تطبيق مصاريفي على شاشتك مباشرة!' 
+                    ? 'اضغط على حفظ/إضافة وسيتم تحميل التطبيق وتثبيته مباشرة على شاشتك!' 
                     : lang === 'fr' 
-                    ? 'Touchez « Ajouter » : Masarifi est prêt sur votre écran d\'accueil !' 
-                    : 'Tap "Add" : Masarifi is ready on your home screen!'}
+                    ? "Appuyez sur Enregistrer/Ajouter et l'application sera téléchargée sur votre écran !" 
+                    : 'Click Save/Add and it will be downloaded and added to your home screen!'}
                 </p>
               </div>
             </div>
