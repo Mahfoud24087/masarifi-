@@ -172,16 +172,9 @@ export function MasarifiProvider({ children }) {
             return { success: false, error: 'nameExists' };
           }
           if (res.success && res.id) {
-            const safe = {
-              id: res.id,
-              name: res.name || cleanName,
-              role: res.role || 'user',
-              createdAt: res.created_at,
-            };
-            save(KEYS.CURRENT_USER, safe);
-            setCurrentUser(safe);
-            setScreen('app');
-            setActiveTab('home');
+            // Redirect to login screen instead of auto-logging in
+            setScreen('auth-signin');
+            showToast(t('auth.accountCreatedSuccess') || '✅ تم إنشاء الحساب بنجاح! الرجاء تسجيل الدخول.', 'success');
             return { success: true };
           }
         }
@@ -211,16 +204,9 @@ export function MasarifiProvider({ children }) {
 
       const newProfile = insertedList?.[0];
       if (newProfile) {
-        const safe = {
-          id: newProfile.id,
-          name: newProfile.name,
-          role: newProfile.role || 'user',
-          createdAt: newProfile.created_at,
-        };
-        save(KEYS.CURRENT_USER, safe);
-        setCurrentUser(safe);
-        setScreen('app');
-        setActiveTab('home');
+        // Redirect to login screen instead of auto-logging in
+        setScreen('auth-signin');
+        showToast(t('auth.accountCreatedSuccess') || '✅ تم إنشاء الحساب بنجاح! الرجاء تسجيل الدخول.', 'success');
         return { success: true };
       }
     } catch (err) {
