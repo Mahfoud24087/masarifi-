@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { ExternalLink, Check, X, ArrowUpRight } from 'lucide-react';
 
-// The 3 Mauritanian Digital Banks configuration
+// The 3 Mauritanian Digital Banks configuration with exact Google Play & iOS IDs
 export const MAURITANIAN_BANKS = [
   {
     id: 'bankily',
@@ -12,10 +12,9 @@ export const MAURITANIAN_BANKS = [
     border: 'border-emerald-500/30',
     bgLight: 'bg-emerald-50 text-emerald-800',
     bgDark: 'bg-emerald-950/40 text-emerald-300',
-    // Android package & iOS URL schemes + fallback store links
-    androidPackage: 'mr.bpm.bankily',
+    androidPackage: 'mr.bpm.digitalbanking.consumer',
     iosScheme: 'bankily://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.bankily',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
     appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
   },
   {
@@ -26,9 +25,9 @@ export const MAURITANIAN_BANKS = [
     border: 'border-rose-500/30',
     bgLight: 'bg-rose-50 text-rose-800',
     bgDark: 'bg-rose-950/40 text-rose-300',
-    androidPackage: 'mr.bim.masrvi',
+    androidPackage: 'com.tagpay.mwallet.masrvi',
     iosScheme: 'masrvi://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bim.masrvi',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
     appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
   },
   {
@@ -39,9 +38,9 @@ export const MAURITANIAN_BANKS = [
     border: 'border-blue-500/30',
     bgLight: 'bg-blue-50 text-blue-800',
     bgDark: 'bg-blue-950/40 text-blue-300',
-    androidPackage: 'mr.bcm.sedad',
+    androidPackage: 'mr.digi.sedad',
     iosScheme: 'sedad://',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bcm.sedad',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
     appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
   },
 ];
