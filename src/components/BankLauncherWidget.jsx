@@ -84,22 +84,17 @@ function buildIntentUrl(bank) {
 }
 
 /**
- * iOS App Store Direct Launcher:
- * 1. Uses itms-apps:// to open the App Store natively (without web redirect).
- * 2. If it's Bankily, opens its specific page.
- * 3. For Sedad and Masrvi, it triggers a direct App Store native search for the bank name,
- *    which immediately displays the app with "OPEN" (since she has it installed) or "GET" (for Masrvi),
- *    working 100% across ANY Apple ID country/storefront without the region error!
+ * iOS Direct App Launcher:
+ * Directly triggers the native app URL scheme (e.g., bankily://, sedad://, masrvi://)
+ * This opens the installed app directly on iPhone without going to App Store!
  */
 function openOnIOS(bank) {
   if (bank.id === 'bankily') {
-    window.location.href = 'itms-apps://apps.apple.com/app/id1460115201';
+    window.location.href = 'bankily://';
   } else if (bank.id === 'sedad') {
-    // Direct App Store search for Sedad: shows the installed app with "OPEN"
-    window.location.href = 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=sedad';
+    window.location.href = 'sedad://';
   } else {
-    // Direct App Store search for Masrvi: shows the app ready to install/open
-    window.location.href = 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=masrvi';
+    window.location.href = 'masrvi://';
   }
 }
 
