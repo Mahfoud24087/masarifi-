@@ -1,114 +1,148 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMasarifi } from '../context/MasarifiContext';
-import { ExternalLink, Check, X, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, X, Check } from 'lucide-react';
 
-// The 3 Mauritanian Digital Banks
-// webUrl = the bank's official website. On Android, if the app has registered
-// App Links for this domain, the OS will intercept and open the native app.
-// If not, the user sees the bank's web portal (still useful).
+/* ------------------------------------------------------------------ */
+/* Banks                                                               */
+/* Classes are written out in full so Tailwind can detect them.        */
+/* ------------------------------------------------------------------ */
+const playStoreUrl = (pkg) =>
+  `https://play.google.com/store/apps/details?id=${pkg}`;
+
 export const MAURITANIAN_BANKS = [
   {
     id: 'bankily',
     name: 'Bankily',
     nameAr: 'بنكيلي',
-    color: 'from-emerald-600 to-teal-700',
+    pkg: 'mr.bpm.digitalbanking.consumer',
+    color: 'from-emerald-500 to-emerald-700',
+    bgLight: 'bg-emerald-50',
+    bgDark: 'bg-emerald-950/40',
     border: 'border-emerald-500/30',
-    bgLight: 'bg-emerald-50 text-emerald-800',
-    bgDark: 'bg-emerald-950/40 text-emerald-300',
-    androidPackage: 'mr.bpm.digitalbanking.consumer',
-    webUrl: 'https://www.bankily.mr',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
-    appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
+    textLight: 'text-emerald-700',
+    textDark: 'text-emerald-300',
   },
   {
     id: 'masrvi',
     name: 'Masrvi',
     nameAr: 'مصرفي',
-    color: 'from-rose-600 to-red-700',
+    pkg: 'com.tagpay.mwallet.masrvi',
+    color: 'from-rose-500 to-red-700',
+    bgLight: 'bg-rose-50',
+    bgDark: 'bg-rose-950/40',
     border: 'border-rose-500/30',
-    bgLight: 'bg-rose-50 text-rose-800',
-    bgDark: 'bg-rose-950/40 text-rose-300',
-    androidPackage: 'com.tagpay.mwallet.masrvi',
-    webUrl: 'https://masrvi.mr',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
-    appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
+    textLight: 'text-rose-700',
+    textDark: 'text-rose-300',
   },
   {
     id: 'sedad',
     name: 'Sedad',
-    nameAr: 'سداد',
-    color: 'from-blue-600 to-indigo-700',
+    nameAr: 'السداد',
+    pkg: 'mr.digi.sedad',
+    color: 'from-indigo-500 to-blue-700',
+    bgLight: 'bg-blue-50',
+    bgDark: 'bg-blue-950/40',
     border: 'border-blue-500/30',
-    bgLight: 'bg-blue-50 text-blue-800',
-    bgDark: 'bg-blue-950/40 text-blue-300',
-    androidPackage: 'mr.digi.sedad',
-    webUrl: 'https://web.sedad.sbs',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
-    appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
+    textLight: 'text-blue-700',
+    textDark: 'text-blue-300',
   },
 ];
 
+/* ------------------------------------------------------------------ */
+/* Helpers                                                             */
+/* ------------------------------------------------------------------ */
+const isAndroid = () =>
+  typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+
+/**
+ * Launcher intent: opens the installed app directly by package name.
+ * If the app is not installed, Chrome goes to the Play Store instead.
+ */
+function buildIntentUrl(bank) {
+  const fallback = encodeURIComponent(playStoreUrl(bank.pkg));
+  return (
+    'intent://#Intent;' +
+    'action=android.intent.action.MAIN;' +
+    'category=android.intent.category.LAUNCHER;' +
+    `package=${bank.pkg};` +
+    `S.browser_fallback_url=${fallback};` +
+    'end'
+  );
+}
+
+const TEXT = {
+  title: { ar: 'فتح وتسجيل مباشر', fr: 'Accès direct', en: '1-Tap Pay' },
+  header: { ar: 'البنوك والمحافظ', fr: 'Banques & Portefeuilles', en: 'Bank & Wallets' },
+  reminder: {
+    ar: (n) => `أهلاً بعودتك من ${n}! 👋 هل أرسلت أو دفعت أموالاً للتو؟`,
+    fr: (n) => `De retour de ${n} ! Avez-vous envoyé de l'argent ?`,
+    en: (n) => `Back from ${n}! Did you send or spend money?`,
+  },
+  log: { ar: 'نعم، سجّل المصروف', fr: 'Oui, enregistrer', en: 'Yes, Log It' },
+  dismiss: { ar: 'لا', fr: 'Non', en: 'No' },
+};
+
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 export default function BankLauncherWidget() {
   const { user, isDark, isRTL, lang, setShowExpenseForm, setEditingExpense } = useMasarifi();
-  const [lastLaunchedBank, setLastLaunchedBank] = useState(() => {
-    return sessionStorage.getItem('masarifi_pending_bank_return') || null;
-  });
+
+  const pendingBankRef = useRef(null);
+  const [reminderBank, setReminderBank] = useState(null);
+  const android = isAndroid();
 
   // Feature Flag: ONLY visible to user "Anonyme" for safe testing!
   const isBetaTester = user?.name?.trim().toLowerCase() === 'anonyme';
 
-  // Listen for user returning to tab/app after opening bank
+  // Only remember which bank was tapped. Do NOT preventDefault or window.open —
+  // that would break the intent navigation.
+  const handleBankClick = useCallback((bank) => {
+    pendingBankRef.current = bank;
+  }, []);
+
+  // When the user comes back to Masarifi, show the expense reminder.
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const pending = sessionStorage.getItem('masarifi_pending_bank_return');
-        if (pending) {
-          setLastLaunchedBank(pending);
-        }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && pendingBankRef.current) {
+        setReminderBank(pendingBankRef.current);
+        pendingBankRef.current = null;
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   if (!isBetaTester) return null;
 
-  // Record bank click (runs on onClick before the <a> navigates)
-  const handleBankClick = (bank) => {
-    sessionStorage.setItem('masarifi_pending_bank_return', bank.id);
-    setLastLaunchedBank(bank.id);
-    // Don't preventDefault — let the <a> tag navigate naturally
+  const t = (key, ...args) => {
+    const v = TEXT[key]?.[lang] ?? TEXT[key]?.en;
+    return typeof v === 'function' ? v(...args) : v;
   };
 
-  const handleConfirmRecord = (bankId) => {
-    const bank = MAURITANIAN_BANKS.find((b) => b.id === bankId);
-    sessionStorage.removeItem('masarifi_pending_bank_return');
-    setLastLaunchedBank(null);
+  const bankName = (b) => (lang === 'ar' ? b.nameAr : b.name);
 
+  // When user confirms they made a payment, open the expense form pre-filled
+  const handleLogExpense = (bank) => {
     setEditingExpense({
-      title: `${bank?.name || 'Bank'} Transfer`,
+      title: `${bank.name} Transfer`,
       amount: '',
       category: 'other',
       date: new Date().toISOString().split('T')[0],
-      notes: `Via ${bank?.name || 'Bank'}`,
+      notes: `Via ${bank.name}`,
       type: 'expense',
     });
     setShowExpenseForm(true);
+    setReminderBank(null);
   };
-
-  const handleDismissReminder = () => {
-    sessionStorage.removeItem('masarifi_pending_bank_return');
-    setLastLaunchedBank(null);
-  };
-
-  const activeBankObj = MAURITANIAN_BANKS.find((b) => b.id === lastLaunchedBank);
 
   return (
     <div className="mb-4" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* ── Return Reminder Card ── */}
-      {lastLaunchedBank && activeBankObj && (
+      {/* ── Expense Reminder (shown after returning from bank app) ── */}
+      {reminderBank && (
         <div
-          className={`p-4 rounded-3xl mb-3 border shadow-lg backdrop-blur-md animate-bounce-once ${
+          role="status"
+          className={`p-4 rounded-3xl mb-3 border shadow-lg backdrop-blur-md ${
             isDark
               ? 'bg-slate-800/95 border-emerald-500/40 text-white'
               : 'bg-emerald-50/95 border-emerald-300 text-slate-800'
@@ -116,78 +150,81 @@ export default function BankLauncherWidget() {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              {lang === 'ar' ? '⚡ تسجيل فوري' : lang === 'fr' ? '⚡ Enregistrement Express' : '⚡ Quick Log'}
+              ⚡ {t('title')}
             </span>
-            <button onClick={handleDismissReminder} className="text-slate-400 hover:text-slate-600 p-1">
+            <button onClick={() => setReminderBank(null)} className="text-slate-400 hover:text-slate-600 p-1">
               <X size={15} />
             </button>
           </div>
           <p className="text-sm font-bold leading-snug">
-            {lang === 'ar'
-              ? `أهلاً بعودتك من ${activeBankObj.nameAr}! 👋 هل أرسلت أو دفعت أموالاً للتو؟`
-              : lang === 'fr'
-              ? `De retour de ${activeBankObj.name} ! Avez-vous envoyé de l'argent ?`
-              : `Back from ${activeBankObj.name}! Did you send or spend money?`}
+            {t('reminder', bankName(reminderBank))}
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button
-              onClick={() => handleConfirmRecord(activeBankObj.id)}
+              onClick={() => handleLogExpense(reminderBank)}
               className="flex-1 py-2.5 px-3 rounded-2xl text-xs font-extrabold text-white bg-gradient-to-r from-emerald-600 to-teal-600 shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
             >
               <Check size={14} />
-              <span>{lang === 'ar' ? 'نعم، سجّل المصروف الآن' : lang === 'fr' ? 'Oui, enregistrer' : 'Yes, Log It'}</span>
+              <span>{t('log')}</span>
             </button>
             <button
-              onClick={handleDismissReminder}
+              onClick={() => setReminderBank(null)}
               className={`py-2.5 px-3 rounded-2xl text-xs font-semibold ${
                 isDark ? 'bg-slate-700 text-slate-300' : 'bg-white border text-slate-600'
               }`}
             >
-              {lang === 'ar' ? 'لا، مجرد تصفح' : lang === 'fr' ? 'Non' : 'No'}
+              {t('dismiss')}
             </button>
           </div>
         </div>
       )}
 
       {/* ── 3-Bank Launcher Section ── */}
-      <div className={`p-4 rounded-3xl border ${isDark ? 'bg-slate-800/80 border-slate-700/60' : 'bg-white border-slate-100 shadow-sm'}`}>
+      <div
+        className={`rounded-3xl border p-4 ${
+          isDark
+            ? 'bg-slate-800/60 border-slate-700 text-slate-100'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
+      >
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <p className={`text-xs font-extrabold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-              {lang === 'ar' ? 'الدفع والمحافظ البنكية' : lang === 'fr' ? 'Paiement & Banques' : 'Bank & Wallets'}
-            </p>
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold">{t('header')}</span>
+            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400">
               BETA
             </span>
           </div>
-          <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            {lang === 'ar' ? 'فتح وتسجيل مباشر' : lang === 'fr' ? 'Accès direct' : '1-Tap Pay'}
+          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {t('title')}
           </span>
         </div>
 
-        {/* 
-          Strategy: Open the bank's official web URL in a new tab.
-          On Android, if the banking app has registered App Links for its domain,
-          the OS will intercept the navigation and open the native app directly.
-          If not, the user lands on the bank's web portal (still useful for banking).
-          Either way, when the user returns to Masarifi, we show the expense log reminder.
+        {/*
+          Android: launcher intent opens the installed app directly
+                   (falls back to the Play Store if not installed).
+          Other:   opens the Play Store page in a new tab.
         */}
         <div className="grid grid-cols-3 gap-2">
           {MAURITANIAN_BANKS.map((b) => (
             <a
               key={b.id}
-              href={b.webUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={android ? buildIntentUrl(b) : playStoreUrl(b.pkg)}
+              {...(!android && { target: '_blank', rel: 'noopener noreferrer' })}
               onClick={() => handleBankClick(b)}
               className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md no-underline ${
                 isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
               }`}
             >
-              <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center mb-1.5 shadow-sm`}>
+              <div
+                className={`w-8 h-8 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center mb-1.5 shadow-sm`}
+              >
                 <ArrowUpRight size={16} strokeWidth={2.5} />
               </div>
-              <span className="text-xs font-black">{lang === 'ar' ? b.nameAr : b.name}</span>
+              <span
+                className={`text-xs font-black ${isDark ? b.textDark : b.textLight}`}
+              >
+                {bankName(b)}
+              </span>
             </a>
           ))}
         </div>
