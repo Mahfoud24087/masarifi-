@@ -16,9 +16,11 @@ export default function AdminScreen() {
     adminAccount, updateAdminProfile,
     tickets, updateTicketStatus, deleteTicket,
     reviews, deleteReview,
-    allUsersList, expenses, totalExpenses, totalIncome,
+    allUsersList, expenses, totalExpenses, totalIncome, platformStats,
     showToast
   } = useMasarifi();
+
+  const [selectedUserDetail, setSelectedUserDetail] = useState(null);
 
   // Make admin full-width on PC desktop
   useEffect(() => {
@@ -294,7 +296,7 @@ export default function AdminScreen() {
             </div>
           </div>
 
-          {/* Card 2: Tracked Volume */}
+          {/* Card 2: Tracked Volume (Global Platform Total Volume) */}
           <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400">{t('admin.kpiVolume')}</span>
@@ -303,10 +305,15 @@ export default function AdminScreen() {
               </div>
             </div>
             <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
-              {totalExpenses.toLocaleString('en-US')}
+              {(platformStats?.totalVolume || totalExpenses).toLocaleString('en-US')}
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-emerald-400 font-semibold">
               <span>MRU (Ouguiya)</span>
+              {platformStats?.totalTransactions > 0 && (
+                <span className="text-slate-500 text-[10px] ml-1">
+                  • {platformStats.totalTransactions} transactions
+                </span>
+              )}
             </div>
           </div>
 
@@ -770,9 +777,13 @@ export default function AdminScreen() {
                     const globalIndex = (userPage - 1) * USERS_PER_PAGE + i;
                     const isTop1 = globalIndex === 0 && (u.expenseCount > 0);
                     return (
-                      <div key={u.id || i} className="p-4 flex items-center justify-between gap-3 text-sm hover:bg-slate-800/40 transition-colors">
+                      <div 
+                        key={u.id || i} 
+                        onClick={() => setSelectedUserDetail(u)}
+                        className="p-4 flex items-center justify-between gap-3 text-sm hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold border ${
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold border transition-transform group-hover:scale-105 ${
                             isTop1 
                               ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/20' 
                               : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
@@ -781,7 +792,7 @@ export default function AdminScreen() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-white">{u.name}</p>
+                              <p className="font-bold text-white group-hover:text-emerald-400 transition-colors">{u.name}</p>
                               {isTop1 && (
                                 <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30">
                                   Top Active
@@ -802,14 +813,17 @@ export default function AdminScreen() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="text-right px-3 py-1 rounded-xl bg-slate-950 border border-slate-800">
-                            <span className="text-xs font-bold text-emerald-400" dir="ltr">
+                          <div className="text-right px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 group-hover:border-emerald-500/30 transition-colors">
+                            <span className="text-xs font-black text-emerald-400" dir="ltr">
                               {u.expenseCount !== undefined ? u.expenseCount : 0}
                             </span>
-                            <span className="text-[10px] text-slate-500 ml-1">
+                            <span className="text-[10px] text-slate-400 ml-1">
                               {lang === 'ar' ? 'عملية' : 'tx'}
                             </span>
                           </div>
+                          <span className="text-slate-500 group-hover:text-slate-300 text-xs hidden sm:inline">
+                            →
+                          </span>
                         </div>
                       </div>
                     );
@@ -1015,6 +1029,85 @@ export default function AdminScreen() {
           </div>
         )}
       </main>
+
+      {/* ─── USER DETAIL MODAL (Shows exact transactions count and profile info) ─── */}
+      {selectedUserDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div 
+            className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl p-6 text-white relative animate-scale-up"
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedUserDetail(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800 transition-colors"
+            >
+              ✕
+            </button>
+
+            {/* Header info */}
+            <div className="flex items-center gap-3.5 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-emerald-500/20">
+                {selectedUserDetail.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <h3 className="text-lg font-black flex items-center gap-2">
+                  <span>{selectedUserDetail.name}</span>
+                  {selectedUserDetail.role === 'admin' ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Active User
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5" dir="ltr">
+                  User ID: {selectedUserDetail.id?.slice(0, 16)}...
+                </p>
+              </div>
+            </div>
+
+            {/* Metrics cards */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-xs text-slate-400 block mb-1">
+                  {lang === 'ar' ? 'إجمالي المعاملات' : 'Total Transactions'}
+                </span>
+                <span className="text-2xl font-black text-emerald-400" dir="ltr">
+                  {selectedUserDetail.expenseCount || 0}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  {lang === 'ar' ? 'مصروف ودخل مسجل' : 'Logged entries'}
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-xs text-slate-400 block mb-1">
+                  {lang === 'ar' ? 'تاريخ الانضمام' : 'Join Date'}
+                </span>
+                <span className="text-sm font-bold text-slate-200 block mt-1" dir="ltr">
+                  {new Date(selectedUserDetail.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                  })}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-1">
+                  {lang === 'ar' ? 'حساب موثق' : 'Verified Profile'}
+                </span>
+              </div>
+            </div>
+
+            {/* Action button */}
+            <button
+              onClick={() => setSelectedUserDetail(null)}
+              className="w-full py-3 rounded-2xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white transition-all active:scale-95"
+            >
+              {lang === 'ar' ? 'إغلاق' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

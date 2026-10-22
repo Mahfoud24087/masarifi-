@@ -1213,12 +1213,15 @@ export function MasarifiProvider({ children }) {
 
   // Platform all users list (local + Supabase + expense count for activity tracking)
   const [allUsersList, setAllUsersList] = useState(() => load(KEYS.USERS, []));
+  const [platformStats, setPlatformStats] = useState({ totalVolume: 0, totalTransactions: 0 });
+
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchAllProfiles() {
       try {
-        // 1. If current user is admin, fetch rich user stats via secure RPC (including transaction/expense count)
+        // 1. If current user is admin, fetch rich user stats & platform volume via secure RPC
         if (currentUser?.role === 'admin' || currentUser?.name?.toLowerCase() === 'admin') {
+          // Fetch users with transaction counts
           const { data: rpcUsers, error: rpcErr } = await supabase.rpc('admin_get_all_users', {
             p_admin_id: currentUser.id,
           });
@@ -1232,8 +1235,19 @@ export function MasarifiProvider({ children }) {
                 expenseCount: Number(u.expense_count) || 0,
               }))
             );
-            return;
           }
+
+          // Fetch global platform tracked volume
+          const { data: statsData, error: statsErr } = await supabase.rpc('admin_get_platform_stats', {
+            p_admin_id: currentUser.id,
+          });
+          if (!statsErr && statsData && statsData.length > 0) {
+            setPlatformStats({
+              totalVolume: Number(statsData[0].total_volume) || 0,
+              totalTransactions: Number(statsData[0].total_transactions) || 0,
+            });
+          }
+          return;
         }
 
         // 2. Query the hardened public_profiles view (excludes sensitive passwords)
@@ -1270,6 +1284,7 @@ export function MasarifiProvider({ children }) {
     // Expenses
     expenses, allUserExpenses, addExpense, updateExpense, deleteExpense,
     totalExpenses, totalIncome, netBalance,
+    platformStats,
     lastMonthTotal, lastMonthExpenses,
     // Month nav
     viewMonth, goToPrevMonth, goToNextMonth, isCurrentMonth,
