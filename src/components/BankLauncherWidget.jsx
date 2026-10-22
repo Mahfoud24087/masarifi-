@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { ExternalLink, Check, X, ArrowUpRight } from 'lucide-react';
 
-// The 3 Mauritanian Digital Banks with correct intent schemes
+// The 3 Mauritanian Digital Banks
+// webUrl = the bank's official website. On Android, if the app has registered
+// App Links for this domain, the OS will intercept and open the native app.
+// If not, the user sees the bank's web portal (still useful).
 export const MAURITANIAN_BANKS = [
   {
     id: 'bankily',
@@ -13,8 +16,7 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-emerald-50 text-emerald-800',
     bgDark: 'bg-emerald-950/40 text-emerald-300',
     androidPackage: 'mr.bpm.digitalbanking.consumer',
-    scheme: 'bankily',
-    iosScheme: 'bankily://',
+    webUrl: 'https://www.bankily.mr',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
     appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
   },
@@ -27,8 +29,7 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-rose-50 text-rose-800',
     bgDark: 'bg-rose-950/40 text-rose-300',
     androidPackage: 'com.tagpay.mwallet.masrvi',
-    scheme: 'masrvi',
-    iosScheme: 'masrvi://',
+    webUrl: 'https://masrvi.mr',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
     appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
   },
@@ -41,25 +42,11 @@ export const MAURITANIAN_BANKS = [
     bgLight: 'bg-blue-50 text-blue-800',
     bgDark: 'bg-blue-950/40 text-blue-300',
     androidPackage: 'mr.digi.sedad',
-    scheme: 'sedad',
-    iosScheme: 'sedad://',
+    webUrl: 'https://web.sedad.sbs',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
     appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
   },
 ];
-
-// Detect platform once
-const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-// Build the correct href for each bank button
-function getBankHref(bank) {
-  if (isIOS) {
-    return bank.iosScheme;
-  }
-  // Android: Use the exact intent:// format with scheme + package
-  // This tells Chrome: "open the app that registered this scheme + package"
-  return `intent://#Intent;scheme=${bank.scheme};package=${bank.androidPackage};end;`;
-}
 
 export default function BankLauncherWidget() {
   const { user, isDark, isRTL, lang, setShowExpenseForm, setEditingExpense } = useMasarifi();
@@ -86,11 +73,11 @@ export default function BankLauncherWidget() {
 
   if (!isBetaTester) return null;
 
-  // Record bank click (called via onClick on the <a> tag — runs before navigation)
+  // Record bank click (runs on onClick before the <a> navigates)
   const handleBankClick = (bank) => {
     sessionStorage.setItem('masarifi_pending_bank_return', bank.id);
     setLastLaunchedBank(bank.id);
-    // Don't preventDefault — let the <a> tag navigate to the intent:// URL naturally
+    // Don't preventDefault — let the <a> tag navigate naturally
   };
 
   const handleConfirmRecord = (bankId) => {
@@ -98,7 +85,6 @@ export default function BankLauncherWidget() {
     sessionStorage.removeItem('masarifi_pending_bank_return');
     setLastLaunchedBank(null);
 
-    // Open expense form prefilled with bank note
     setEditingExpense({
       title: `${bank?.name || 'Bank'} Transfer`,
       amount: '',
@@ -119,7 +105,7 @@ export default function BankLauncherWidget() {
 
   return (
     <div className="mb-4" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* ── Return Reminder Card (Shown when returning from bank app) ── */}
+      {/* ── Return Reminder Card ── */}
       {lastLaunchedBank && activeBankObj && (
         <div
           className={`p-4 rounded-3xl mb-3 border shadow-lg backdrop-blur-md animate-bounce-once ${
@@ -163,7 +149,7 @@ export default function BankLauncherWidget() {
         </div>
       )}
 
-      {/* ── 3-Bank Launcher Section (Beta Badge) ── */}
+      {/* ── 3-Bank Launcher Section ── */}
       <div className={`p-4 rounded-3xl border ${isDark ? 'bg-slate-800/80 border-slate-700/60' : 'bg-white border-slate-100 shadow-sm'}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
@@ -179,12 +165,20 @@ export default function BankLauncherWidget() {
           </span>
         </div>
 
-        {/* KEY FIX: Using <a> tags with intent:// href so Chrome treats it as a real user-gesture link */}
+        {/* 
+          Strategy: Open the bank's official web URL in a new tab.
+          On Android, if the banking app has registered App Links for its domain,
+          the OS will intercept the navigation and open the native app directly.
+          If not, the user lands on the bank's web portal (still useful for banking).
+          Either way, when the user returns to Masarifi, we show the expense log reminder.
+        */}
         <div className="grid grid-cols-3 gap-2">
           {MAURITANIAN_BANKS.map((b) => (
             <a
               key={b.id}
-              href={getBankHref(b)}
+              href={b.webUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => handleBankClick(b)}
               className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 hover:shadow-md no-underline ${
                 isDark ? `${b.bgDark} ${b.border}` : `${b.bgLight} ${b.border}`
