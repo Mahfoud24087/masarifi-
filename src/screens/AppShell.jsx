@@ -247,7 +247,12 @@ export default function AppShell() {
     <div className={`flex flex-col min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <SupportNotificationBanner />
       <BudgetNotificationBanner />
-      <div className="flex-1 overflow-y-auto pb-24">{renderTab()}</div>
+      <div 
+        className="flex-1 overflow-y-auto"
+        style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        {renderTab()}
+      </div>
       <BottomNavBar />
       <ExpenseFormSheet />
       <ConfirmDialog />

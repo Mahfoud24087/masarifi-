@@ -125,15 +125,18 @@ export default function ExpenseFormSheet() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       dir={isRTL ? 'rtl' : 'ltr'}
       onClick={handleClose}
     >
       <div
-        className={`relative w-full max-w-lg rounded-t-3xl p-5 shadow-2xl max-h-[95vh] overflow-y-auto ${
-          isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white'
+        className={`relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto ${
+          isDark ? 'bg-slate-900 border-t sm:border border-slate-800' : 'bg-white'
         }`}
-        style={{ animation: 'slideUp 0.3s ease-out' }}
+        style={{ 
+          animation: 'slideUp 0.3s ease-out',
+          paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>

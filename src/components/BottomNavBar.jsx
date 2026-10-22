@@ -47,13 +47,16 @@ export default function BottomNavBar() {
   return (
     <div
       dir={isRTL ? 'rtl' : 'ltr'}
-      className={`fixed bottom-0 inset-x-0 z-40 border-t backdrop-blur-lg transition-colors duration-200 ${
+      className={`fixed bottom-0 inset-x-0 z-40 border-t backdrop-blur-xl transition-colors duration-200 ${
         isDark
           ? 'bg-slate-900/95 border-slate-800 text-slate-200'
           : 'bg-white/95 border-slate-100 text-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]'
       }`}
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
-      <div className="flex items-center justify-between w-full max-w-md mx-auto h-16 px-4 relative">
+      <div className="flex items-center justify-between w-full max-w-lg mx-auto h-16 px-4 sm:px-6 relative">
         {/* Start section: Home & Summary */}
         <div className="flex items-center justify-around flex-1">
           {navButton('home', Home, t('nav.home'))}
