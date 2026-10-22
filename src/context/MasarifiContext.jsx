@@ -1138,6 +1138,17 @@ export function MasarifiProvider({ children }) {
   const updateAdminProfile = useCallback(async (updates) => {
     if (isSupabaseConfigured && supabase && currentUser) {
       try {
+        // 1. Verify current password against Supabase if provided
+        if (updates.currentPassword) {
+          const { data: prof } = await supabase.from('profiles').select('password').eq('id', currentUser.id).single();
+          if (prof) {
+            const currentHashed = await hashPassword(updates.currentPassword);
+            let match = prof.password === currentHashed;
+            if (!match && prof.password === updates.currentPassword) match = true;
+            if (!match) return { success: false, error: 'wrongPassword' };
+          }
+        }
+
         const payload = {};
         if (updates.name) payload.name = updates.name;
         if (updates.password) {
@@ -1146,6 +1157,7 @@ export function MasarifiProvider({ children }) {
         await supabase.from('profiles').update(payload).eq('id', currentUser.id);
         const updatedUser = { ...currentUser, ...updates };
         delete updatedUser.password;
+        delete updatedUser.currentPassword;
         save(KEYS.CURRENT_USER, updatedUser);
         setCurrentUser(updatedUser);
       } catch (err) {

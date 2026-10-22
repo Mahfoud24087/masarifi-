@@ -121,14 +121,12 @@ export default function AdminScreen() {
     }
   };
 
-  const handleSaveAdminSettings = (e) => {
+  const handleSaveAdminSettings = async (e) => {
     e.preventDefault();
     const errs = {};
     if (!settingsForm.name.trim()) errs.name = t('auth.errors.required');
     if (!settingsForm.currentPassword) {
       errs.currentPassword = t('auth.errors.required');
-    } else if (settingsForm.currentPassword !== adminAccount?.password) {
-      errs.currentPassword = t('admin.adminWrongPassword');
     }
 
     if (settingsForm.newPassword) {
@@ -144,12 +142,24 @@ export default function AdminScreen() {
       return;
     }
 
-    const updates = { name: settingsForm.name.trim() };
+    const updates = { 
+      name: settingsForm.name.trim(),
+      currentPassword: settingsForm.currentPassword 
+    };
     if (settingsForm.newPassword) {
       updates.password = settingsForm.newPassword;
     }
 
-    updateAdminProfile(updates);
+    const res = await updateAdminProfile(updates);
+    if (res && !res.success) {
+      if (res.error === 'wrongPassword') {
+        setSettingsErrors({ currentPassword: t('admin.adminWrongPassword') });
+      } else {
+        showToast('❌ ' + (res.error || 'Error'), 'error');
+      }
+      return;
+    }
+
     setSettingsErrors({});
     setSettingsForm((prev) => ({
       ...prev,
