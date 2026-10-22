@@ -14,6 +14,49 @@ export const MAURITANIAN_BANKS = [
     bgDark: 'bg-emerald-950/40 text-emerald-300',
     androidPackage: 'mr.bpm.digitalbanking.consumer',
     iosScheme: 'bankily://',
+    customScheme: 'bankily://',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
+    appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
+  },
+  {
+    id: 'masrvi',
+    name: 'Masrvi',
+    nameAr: 'مصرفي',
+    color: 'from-rose-600 to-red-700',
+    border: 'border-rose-500/30',
+    bgLight: 'bg-rose-50 text-rose-800',
+    bgDark: 'bg-rose-950/40 text-rose-300',
+    androidPackage: 'com.tagpay.mwallet.masrvi',
+    iosScheme: 'masrvi://',
+    customScheme: 'masrvi://',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.tagpay.mwallet.masrvi',
+    appStoreUrl: 'https://apps.apple.com/app/masrvi/id1527783856',
+  },
+  {
+    id: 'sedad',
+    name: 'Sedad',
+    nameAr: 'سداد',
+    color: 'from-blue-600 to-indigo-700',
+    border: 'border-blue-500/30',
+    bgLight: 'bg-blue-50 text-blue-800',
+    bgDark: 'bg-blue-950/40 text-blue-300',
+    androidPackage: 'mr.digi.sedad',
+    iosScheme: 'sedad://',
+    customScheme: 'sedad://',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.digi.sedad',
+    appStoreUrl: 'https://apps.apple.com/app/sedad/id1498177519',
+  },
+];
+  {
+    id: 'bankily',
+    name: 'Bankily',
+    nameAr: 'بنكيلي',
+    color: 'from-emerald-600 to-teal-700',
+    border: 'border-emerald-500/30',
+    bgLight: 'bg-emerald-50 text-emerald-800',
+    bgDark: 'bg-emerald-950/40 text-emerald-300',
+    androidPackage: 'mr.bpm.digitalbanking.consumer',
+    iosScheme: 'bankily://',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=mr.bpm.digitalbanking.consumer',
     appStoreUrl: 'https://apps.apple.com/app/bankily/id1451556637',
   },
@@ -70,6 +113,7 @@ export default function BankLauncherWidget() {
 
   if (!isBetaTester) return null;
 
+// Updated opening logic: direct intent link inside a temporary anchor triggered synchronously
   const handleOpenBank = (bank) => {
     // Record that user opened this bank
     sessionStorage.setItem('masarifi_pending_bank_return', bank.id);
@@ -78,25 +122,22 @@ export default function BankLauncherWidget() {
     const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
 
     if (isIOS) {
+      // iOS custom scheme (if defined) – fallback to App Store after short delay
       window.location.href = bank.iosScheme;
       setTimeout(() => {
         window.open(bank.appStoreUrl, '_blank');
       }, 1800);
     } else {
-      // Android: Custom scheme direct trigger (works if registered, e.g., sedad://, bankily://)
-      // We first navigate to the scheme directly without falling back instantly to the store
-      const customScheme = bank.id === 'bankily' ? 'bankily://' : bank.id === 'sedad' ? 'sedad://' : 'masrvi://';
-      
-      // Direct intent format for modern Android Chrome:
-      // When scheme + package are provided together, Chrome matches the app specifically.
-      const intentUrl = `intent://#Intent;scheme=${bank.id};package=${bank.androidPackage};end;`;
-
-      // Try intent first via direct location assign (must be direct user gesture):
-      try {
-        window.location.href = intentUrl;
-      } catch (e) {
-        window.location.href = customScheme;
-      }
+      // Android – Build an explicit intent URL that launches the app's main activity.
+      // This must be executed as a direct user gesture; we create an <a> element and click it synchronously.
+      const intentUrl = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
+      const link = document.createElement('a');
+      link.href = intentUrl;
+      // Append to DOM to make the click work in Chrome, then trigger click immediately.
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // No fallback to Play Store – if the app is not installed the click simply does nothing.
     }
   };
 
