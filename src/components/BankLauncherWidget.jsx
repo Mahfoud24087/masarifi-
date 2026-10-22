@@ -78,24 +78,21 @@ export default function BankLauncherWidget() {
     const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
 
     if (isIOS) {
-      // Try opening iOS scheme or redirect to App Store
       window.location.href = bank.iosScheme;
       setTimeout(() => {
         window.open(bank.appStoreUrl, '_blank');
       }, 1800);
     } else {
-      // Direct Android Application launch intent via package manager
-      // "action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER" forces the installed app to launch directly!
-      const directLaunchIntent = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${bank.androidPackage};end`;
-      
-      // Fallback intent if not installed
-      const storeFallback = `market://details?id=${bank.androidPackage}`;
-      
-      try {
-        window.location.href = directLaunchIntent;
-      } catch (e) {
-        window.location.href = storeFallback;
-      }
+      // Chrome Android Native Intent URL:
+      // Uses the official Chrome intent format with package identifier to launch the app directly.
+      const chromeIntent = `intent://#Intent;package=${bank.androidPackage};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(bank.playStoreUrl)};end;`;
+
+      const link = document.createElement('a');
+      link.href = chromeIntent;
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
