@@ -196,26 +196,38 @@ export function MasarifiProvider({ children }) {
       return { success: false, error: 'noDatabase' };
     }
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .ilike('name', cleanName)
-        .maybeSingle();
-
-      if (!profile) return { success: false, error: 'invalidCredentials' };
-
-      // Try hashed password first
       const hashed = await hashPassword(password);
-      let passwordMatch = profile.password === hashed;
 
-      // Migration path: if stored password is plain-text, compare directly
-      if (!passwordMatch && profile.password === password) {
-        passwordMatch = true;
-        // Re-hash and update in DB silently
-        supabase.from('profiles').update({ password: hashed }).eq('id', profile.id).then(() => {});
+      // 1. Try secure RPC function first (keeps password verification server-side)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('login_user', {
+        p_name: cleanName,
+        p_password: hashed,
+      });
+
+      let profile = null;
+      if (!rpcError && rpcData && rpcData.length > 0 && rpcData[0].success) {
+        profile = rpcData[0];
+      } else {
+        // Fallback to direct query if RPC is not yet created in Supabase
+        const { data: fallbackProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('name', cleanName)
+          .maybeSingle();
+
+        if (fallbackProfile) {
+          let passwordMatch = fallbackProfile.password === hashed;
+          if (!passwordMatch && fallbackProfile.password === password) {
+            passwordMatch = true;
+            supabase.from('profiles').update({ password: hashed }).eq('id', fallbackProfile.id).then(() => {});
+          }
+          if (passwordMatch) {
+            profile = fallbackProfile;
+          }
+        }
       }
 
-      if (!passwordMatch) return { success: false, error: 'invalidCredentials' };
+      if (!profile) return { success: false, error: 'invalidCredentials' };
 
       const role = profile.role || 'user';
       const safe = { id: profile.id, name: profile.name, role, createdAt: profile.created_at };
