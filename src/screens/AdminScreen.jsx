@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Shield, ArrowLeft, ArrowRight, Lock, Users, 
-  TrendingUp, Star, MessageSquare, CheckCircle2, 
+  TrendingUp, TrendingDown, Star, MessageSquare, CheckCircle2, 
   Clock, AlertCircle, Trash2, Edit3, ExternalLink, RefreshCw, 
   Search, Bug, Lightbulb, UserCheck, HelpCircle, Phone, Mail,
   Send, Sparkles, Activity, Check, Eye, EyeOff, Settings, Key, User,
-  Flame, Award, ChevronLeft, ChevronRight, Zap
+  Flame, Award, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 
@@ -37,6 +37,7 @@ export default function AdminScreen() {
   const [adminNotes, setAdminNotes] = useState({});
   const [userSearch, setUserSearch] = useState('');
   const [userPage, setUserPage] = useState(1);
+  const [userTxFilter, setUserTxFilter] = useState('all'); // 'all' | 'expenses' | 'income'
   const USERS_PER_PAGE = 8;
 
   // Admin Profile Settings State
@@ -84,8 +85,8 @@ export default function AdminScreen() {
     let list = [...allUsersList];
     // Sort primarily by expenseCount (most active first), then by creation date
     list.sort((a, b) => {
-      const countA = a.expenseCount || 0;
-      const countB = b.expenseCount || 0;
+      const countA = (a.expenseCount || 0) + (a.incomeCount || 0);
+      const countB = (b.expenseCount || 0) + (b.incomeCount || 0);
       if (countB !== countA) return countB - countA;
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     });
@@ -93,8 +94,16 @@ export default function AdminScreen() {
     if (userSearch.trim()) {
       list = list.filter(u => u.name?.toLowerCase().includes(userSearch.toLowerCase()));
     }
+
+    // Filter by transaction type
+    if (userTxFilter === 'expenses') {
+      list = list.filter(u => (u.expenseCount || 0) > 0);
+    } else if (userTxFilter === 'income') {
+      list = list.filter(u => (u.incomeCount || 0) > 0);
+    }
+
     return list;
-  }, [allUsersList, userSearch]);
+  }, [allUsersList, userSearch, userTxFilter]);
 
   // Top Most Active User (Leader)
   const topActiveUser = useMemo(() => {
@@ -110,10 +119,10 @@ export default function AdminScreen() {
     return sortedAndFilteredUsers.slice(start, start + USERS_PER_PAGE);
   }, [sortedAndFilteredUsers, userPage]);
 
-  // Reset page when search query changes
+  // Reset page when search query or filter changes
   useEffect(() => {
     setUserPage(1);
-  }, [userSearch]);
+  }, [userSearch, userTxFilter]);
 
   const handleUpdateStatus = async (ticketId, nextStatus) => {
     const note = adminNotes[ticketId] !== undefined ? adminNotes[ticketId] : null;
@@ -765,6 +774,32 @@ export default function AdminScreen() {
               </div>
             </div>
 
+            {/* ── Transaction Type Filter Tabs ── */}
+            <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-900/80 border border-slate-800 w-full">
+              {[
+                { id: 'all', label: lang === 'ar' ? 'الكل' : 'All', icon: null },
+                { id: 'expenses', label: lang === 'ar' ? 'المصروفات فقط' : 'Expenses Only', icon: <span className="text-red-400">↘</span> },
+                { id: 'income', label: lang === 'ar' ? 'الدخل فقط' : 'Income Only', icon: <span className="text-emerald-400">↗</span> },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setUserTxFilter(f.id)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    userTxFilter === f.id
+                      ? f.id === 'expenses'
+                        ? 'bg-red-600/80 text-white shadow-sm'
+                        : f.id === 'income'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-700 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {f.icon}
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {/* ── Paginated Users List (Not showing all at once!) ── */}
             <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-md overflow-hidden">
               <div className="divide-y divide-slate-800">
@@ -813,14 +848,26 @@ export default function AdminScreen() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="text-right px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 group-hover:border-emerald-500/30 transition-colors">
-                            <span className="text-xs font-black text-emerald-400" dir="ltr">
+                          {/* Expense count */}
+                          <div className="text-right px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-900/40 group-hover:border-red-500/30 transition-colors">
+                            <span className="text-xs font-black text-red-400" dir="ltr">
                               {u.expenseCount !== undefined ? u.expenseCount : 0}
                             </span>
                             <span className="text-[10px] text-slate-400 ml-1">
-                              {lang === 'ar' ? 'عملية' : 'tx'}
+                              {lang === 'ar' ? 'مصروف' : 'exp'}
                             </span>
                           </div>
+                          {/* Income count — only shown when available */}
+                          {(u.incomeCount !== undefined) && (
+                            <div className="text-right px-2.5 py-1.5 rounded-xl bg-emerald-950/40 border border-emerald-900/40 group-hover:border-emerald-500/30 transition-colors">
+                              <span className="text-xs font-black text-emerald-400" dir="ltr">
+                                {u.incomeCount || 0}
+                              </span>
+                              <span className="text-[10px] text-slate-400 ml-1">
+                                {lang === 'ar' ? 'دخل' : 'inc'}
+                              </span>
+                            </div>
+                          )}
                           <span className="text-slate-500 group-hover:text-slate-300 text-xs hidden sm:inline">
                             →
                           </span>
@@ -1070,16 +1117,55 @@ export default function AdminScreen() {
             </div>
 
             {/* Metrics cards */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-red-900/30">
+                <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1">
+                  <span className="text-red-400 text-base">↘</span>
+                  {lang === 'ar' ? 'المصروفات' : 'Expenses'}
+                </span>
+                <span className="text-2xl font-black text-red-400" dir="ltr">
+                  {selectedUserDetail.expenseCount || 0}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  {lang === 'ar' ? 'عملية مصروف' : 'transactions'}
+                </span>
+                {selectedUserDetail.expenseTotal > 0 && (
+                  <span className="text-xs font-bold text-red-300 mt-1 block" dir="ltr">
+                    {selectedUserDetail.expenseTotal.toLocaleString()} MRU
+                  </span>
+                )}
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-900/30">
+                <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1">
+                  <span className="text-emerald-400 text-base">↗</span>
+                  {lang === 'ar' ? 'الدخل' : 'Income'}
+                </span>
+                <span className="text-2xl font-black text-emerald-400" dir="ltr">
+                  {selectedUserDetail.incomeCount || 0}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  {lang === 'ar' ? 'عملية دخل' : 'transactions'}
+                </span>
+                {selectedUserDetail.incomeTotal > 0 && (
+                  <span className="text-xs font-bold text-emerald-300 mt-1 block" dir="ltr">
+                    {selectedUserDetail.incomeTotal.toLocaleString()} MRU
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Total & Join Date */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
                 <span className="text-xs text-slate-400 block mb-1">
                   {lang === 'ar' ? 'إجمالي المعاملات' : 'Total Transactions'}
                 </span>
-                <span className="text-2xl font-black text-emerald-400" dir="ltr">
-                  {selectedUserDetail.expenseCount || 0}
+                <span className="text-2xl font-black text-white" dir="ltr">
+                  {(selectedUserDetail.expenseCount || 0) + (selectedUserDetail.incomeCount || 0) || selectedUserDetail.expenseCount || 0}
                 </span>
                 <span className="text-[11px] text-slate-500 block mt-0.5">
-                  {lang === 'ar' ? 'مصروف ودخل مسجل' : 'Logged entries'}
+                  {lang === 'ar' ? 'مدخلات مسجلة' : 'Logged entries'}
                 </span>
               </div>
 

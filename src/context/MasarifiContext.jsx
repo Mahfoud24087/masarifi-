@@ -1399,6 +1399,9 @@ export function MasarifiProvider({ children }) {
                 role: u.role,
                 createdAt: u.created_at,
                 expenseCount: Number(u.expense_count) || 0,
+                incomeCount: Number(u.income_count) || 0,
+                expenseTotal: Number(u.expense_total) || 0,
+                incomeTotal: Number(u.income_total) || 0,
               }))
             );
           }
