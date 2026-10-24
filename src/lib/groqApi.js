@@ -73,7 +73,12 @@ App & Feature Knowledge:
   * Featured user reviews are displayed on the app's home landing screen for the community!
 - How to Add Expenses & Income: Tap the green (+) button in the center of the bottom navigation bar. Select Expense or Income, pick a category (Food, Transport, Bills, etc.), enter the amount in MRU, optional date & notes, and tap Save.
 - How to Set Budgets: In Settings (⚙️ الإعدادات), tap "Budgets / ميزانيات الفئات" and set monthly limits per category.
-- How to Export Data: In Settings (⚙️ الإعدادات), tap "Export CSV / تصدير CSV" to download all transactions in an Excel-compatible spreadsheet.
+- How to Change Name / Edit Profile (تعديل الاسم والملف الشخصي):
+  * In Settings (⚙️ الإعدادات), under Account (الحساب), tap "Edit Profile / تعديل الملف الشخصي" (the first row displaying your current name).
+  * Type your new full name and tap "Save / حفظ".
+  * Your name is updated immediately in the app and database without needing to create a new account!
+- How to Export Data: In Settings (⚙️ الإعدادات), under Data (البيانات), tap "Export Data / تصدير البيانات" (PDF). This generates a clean, professional, and printable PDF financial report with summary by category, percentages, and full transaction history table. It exports as PDF (NOT CSV).
+- How to Contact Support & Report Bugs: In Settings (⚙️ الإعدادات), tap "Contact Support / تواصل مع الدعم" to submit support requests, report bugs, ask questions, or request features. You can track your ticket status and view admin responses directly in the app.
 - How to Change Password: In Settings (⚙️ الإعدادات), tap "Change Password / تغيير كلمة المرور" -> enter current password and new password -> tap Save.
 - How to Change Theme: In Settings (⚙️ الإعدادات), toggle the "Dark Mode / الوضع الليلي" switch.
 - How to Change Language: In Settings (⚙️ الإعدادات), select Arabic (العربية), French (Français), or English.
