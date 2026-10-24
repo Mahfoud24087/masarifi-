@@ -340,35 +340,126 @@ export function MasarifiProvider({ children }) {
   // ── Budgets ──────────────────────────────────────────────────────
   const getBudgetKey = useCallback(() => currentUser ? `${KEYS.BUDGETS}_${currentUser.id}` : null, [currentUser]);
 
-  const budgets = useMemo(() => {
+  const [budgets, setBudgets] = useState(() => {
     if (!currentUser) return {};
     return load(getBudgetKey(), {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+
+  // Fetch budgets from Supabase cloud on login / load / device switch & listen for realtime updates
+  useEffect(() => {
+    if (!currentUser) {
+      setBudgets({});
+      return;
+    }
+
+    const key = getBudgetKey();
+    // 1. Immediately load local cache for zero delay
+    if (key) {
+      const cached = load(key, {});
+      setBudgets(cached);
+    }
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    let isMounted = true;
+    async function fetchCloudBudgets() {
+      try {
+        let budgetMap = {};
+        // 2. Query dedicated budgets table
+        const { data, error } = await supabase
+          .from('budgets')
+          .select('category, amount')
+          .eq('user_id', currentUser.id);
+
+        if (!error && data && data.length > 0) {
+          data.forEach((row) => {
+            budgetMap[row.category] = parseFloat(row.amount) || 0;
+          });
+        } else {
+          // 3. Fallback to public_profiles column
+          const { data: profData } = await supabase
+            .from('public_profiles')
+            .select('budgets')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+          if (profData?.budgets && typeof profData.budgets === 'object') {
+            budgetMap = { ...profData.budgets };
+          }
+        }
+
+        if (isMounted && Object.keys(budgetMap).length > 0) {
+          setBudgets(budgetMap);
+          if (key) save(key, budgetMap);
+        }
+      } catch (err) {
+        console.warn('Error fetching cloud budgets:', err);
+      }
+    }
+
+    fetchCloudBudgets();
+
+    // 4. Supabase Realtime for instant multi-device budget sync
+    const channel = supabase
+      .channel(`realtime_budgets_${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'budgets', filter: `user_id=eq.${currentUser.id}` },
+        () => {
+          fetchCloudBudgets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [currentUser, getBudgetKey]);
 
-  const saveBudget = useCallback((category, amount) => {
+  // Unified batch save for budgets across devices
+  const saveAllBudgets = useCallback(async (newBudgets) => {
+    if (!currentUser) return;
     const key = getBudgetKey();
-    if (!key) return;
-    const current = load(key, {});
-    const updated = { ...current, [category]: parseFloat(amount) || 0 };
-    save(key, updated);
-    // Sync budgets to Supabase profiles table
-    if (isSupabaseConfigured && supabase && currentUser) {
-      supabase
-        .from('profiles')
-        .update({ budgets: updated })
-        .eq('id', currentUser.id)
-        .then(({ error }) => { if (error) console.warn('Budget sync error:', error.message); });
-    }
-    // Force re-render by bumping a counter
+    const updated = { ...(budgets || {}), ...newBudgets };
+
+    // Optimistic UI update
+    setBudgets(updated);
+    if (key) save(key, updated);
     setExpenseVer((v) => v + 1);
-  }, [getBudgetKey, currentUser]);
+
+    // Sync to Supabase budgets table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const rows = Object.entries(updated).map(([category, amount]) => ({
+          user_id: currentUser.id,
+          category,
+          amount: parseFloat(amount) || 0,
+        }));
+        if (rows.length > 0) {
+          const { error: bErr } = await supabase.from('budgets').upsert(rows, { onConflict: 'user_id, category' });
+          if (bErr) console.warn('Supabase budget upsert error:', bErr.message);
+        }
+        // Also sync to profiles via RPC if available
+        try {
+          await supabase.rpc('save_user_budgets', {
+            p_user_id: currentUser.id,
+            p_budgets: updated,
+          });
+        } catch {}
+      } catch (err) {
+        console.warn('Cloud budget sync error:', err);
+      }
+    }
+  }, [currentUser, getBudgetKey, budgets]);
+
+  const saveBudget = useCallback((category, amount) => {
+    saveAllBudgets({ [category]: parseFloat(amount) || 0 });
+  }, [saveAllBudgets]);
 
   const getBudget = useCallback((category) => {
-    const key = getBudgetKey();
-    if (!key) return 0;
-    return load(key, {})[category] || 0;
-  }, [getBudgetKey]);
+    return budgets[category] || 0;
+  }, [budgets]);
 
   // ── Dismissed Budget Alerts ─────────────────────────────────────
   const [dismissedBudgetAlerts, setDismissedBudgetAlerts] = useState(() => {
@@ -917,92 +1008,97 @@ export function MasarifiProvider({ children }) {
   );
 
   // ── Support Tickets & Admin Sync ────────────────────────────────────
-  const bumpTicket = useCallback(() => setTicketVer((v) => v + 1), []);
+  const [tickets, setTickets] = useState(() => load(KEYS.TICKETS, []));
 
-  const tickets = useMemo(() => {
-    return load(KEYS.TICKETS, []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketVer]);
-
-  // Fetch tickets from Supabase using dual-table sync (support_tickets or universal cloud expenses)
-  useEffect(() => {
+  const fetchSupabaseTickets = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) return;
-    async function fetchSupabaseTickets() {
-      try {
-        let mapped = null;
+    try {
+      let mapped = null;
 
-        // 1. Try dedicated support_tickets table first
-        const { data: dedicatedData, error: dedicatedErr } = await supabase
-          .from('support_tickets')
+      // 1. Try dedicated support_tickets table first
+      const { data: dedicatedData, error: dedicatedErr } = await supabase
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!dedicatedErr && dedicatedData && dedicatedData.length > 0) {
+        mapped = dedicatedData.map((d) => ({
+          id: d.id,
+          userId: d.user_id,
+          userName: d.user_name || 'مستخدم',
+          category: d.category || 'general',
+          subject: d.subject || '',
+          message: d.message || '',
+          contact: d.contact || '',
+          status: d.status || 'new',
+          adminNotes: d.admin_notes || '',
+          createdAt: d.created_at,
+          updatedAt: d.updated_at || d.created_at,
+        }));
+      } else {
+        // 2. Universal cloud sync fallback using expenses table
+        const { data: expenseTickets, error: expErr } = await supabase
+          .from('expenses')
           .select('*')
+          .eq('category', '__support_ticket__')
           .order('created_at', { ascending: false });
 
-        if (!dedicatedErr && dedicatedData && dedicatedData.length > 0) {
-          mapped = dedicatedData.map((d) => ({
-            id: d.id,
-            userId: d.user_id,
-            userName: d.user_name || 'مستخدم',
-            category: d.category || 'general',
-            subject: d.subject || '',
-            message: d.message || '',
-            contact: d.contact || '',
-            status: d.status || 'new',
-            adminNotes: d.admin_notes || '',
-            createdAt: d.created_at,
-            updatedAt: d.updated_at || d.created_at,
-          }));
-        } else {
-          // 2. Universal cloud sync fallback using expenses table
-          const { data: expenseTickets, error: expErr } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('category', '__support_ticket__')
-            .order('created_at', { ascending: false });
-
-          if (!expErr && expenseTickets) {
-            mapped = expenseTickets.map((row) => {
-              let parsed = {};
-              try { parsed = JSON.parse(row.notes); } catch {}
-              return {
-                id: parsed.id || row.id.replace('tk_', ''),
-                userId: parsed.userId || row.user_id,
-                userName: parsed.userName || 'مستخدم',
-                category: parsed.category || 'general',
-                subject: parsed.subject || row.title.replace('[TICKET] ', ''),
-                message: parsed.message || '',
-                contact: parsed.contact || '',
-                status: parsed.status || 'new',
-                adminNotes: parsed.adminNotes || '',
-                createdAt: parsed.createdAt || row.created_at,
-                updatedAt: parsed.updatedAt || row.created_at,
-              };
-            });
-          }
+        if (!expErr && expenseTickets) {
+          mapped = expenseTickets.map((row) => {
+            let parsed = {};
+            try { parsed = JSON.parse(row.notes); } catch {}
+            return {
+              id: parsed.id || row.id.replace('tk_', ''),
+              userId: parsed.userId || row.user_id,
+              userName: parsed.userName || 'مستخدم',
+              category: parsed.category || 'general',
+              subject: parsed.subject || row.title.replace('[TICKET] ', ''),
+              message: parsed.message || '',
+              contact: parsed.contact || '',
+              status: parsed.status || 'new',
+              adminNotes: parsed.adminNotes || '',
+              createdAt: parsed.createdAt || row.created_at,
+              updatedAt: parsed.updatedAt || row.created_at,
+            };
+          });
         }
-
-        if (mapped) {
-          // Merge with local tickets preserving latest
-          const local = load(KEYS.TICKETS, []);
-          const mergedMap = new Map();
-          local.forEach((t) => mergedMap.set(t.id, t));
-          mapped.forEach((t) => mergedMap.set(t.id, t));
-          const mergedList = Array.from(mergedMap.values()).sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          );
-          save(KEYS.TICKETS, mergedList);
-          bumpTicket();
-        }
-      } catch (err) {
-        console.warn('Error fetching Supabase tickets:', err);
       }
+
+      if (mapped) {
+        // Cloud database is the single source of truth across all devices
+        setTickets(mapped);
+        save(KEYS.TICKETS, mapped);
+      }
+    } catch (err) {
+      console.warn('Error fetching Supabase tickets:', err);
     }
+  }, []);
+
+  // Sync tickets on load and subscribe to realtime updates
+  useEffect(() => {
     fetchSupabaseTickets();
-    const timer = setInterval(fetchSupabaseTickets, 10000);
-    return () => clearInterval(timer);
-  }, [bumpTicket]);
+    const timer = setInterval(fetchSupabaseTickets, 7000);
+
+    let channel = null;
+    if (isSupabaseConfigured && supabase) {
+      channel = supabase
+        .channel('realtime_support_tickets')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: 'category=eq.__support_ticket__' }, () => {
+          fetchSupabaseTickets();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
+          fetchSupabaseTickets();
+        })
+        .subscribe();
+    }
+
+    return () => {
+      clearInterval(timer);
+      if (channel && supabase) supabase.removeChannel(channel);
+    };
+  }, [fetchSupabaseTickets]);
 
   const addTicket = useCallback(async ({ category, subject, message, contact }) => {
-    const all = load(KEYS.TICKETS, []);
     const newTicket = {
       id: genId(),
       userId: currentUser?.id || 'anonymous',
@@ -1017,17 +1113,20 @@ export function MasarifiProvider({ children }) {
       updatedAt: new Date().toISOString(),
     };
 
-    all.unshift(newTicket);
-    save(KEYS.TICKETS, all);
-    bumpTicket();
+    setTickets((prev) => {
+      const updated = [newTicket, ...prev];
+      save(KEYS.TICKETS, updated);
+      return updated;
+    });
 
-    // Universal Cloud Sync
+    // Cloud Database Sync
     if (isSupabaseConfigured && supabase) {
       try {
+        let inserted = false;
         // Attempt support_tickets table first
         const { error: dedicatedErr } = await supabase.from('support_tickets').insert([{
           id: newTicket.id,
-          user_id: newTicket.userId,
+          user_id: currentUser?.id || null,
           user_name: newTicket.userName,
           category: newTicket.category,
           subject: newTicket.subject,
@@ -1038,12 +1137,16 @@ export function MasarifiProvider({ children }) {
           created_at: newTicket.createdAt,
         }]);
 
+        if (!dedicatedErr) {
+          inserted = true;
+        }
+
         // If table does not exist or fails, securely sync via universal cloud expenses table
-        if (dedicatedErr) {
+        if (!inserted) {
           let syncUserId = currentUser?.id;
           if (!syncUserId || syncUserId === 'anonymous') {
-            const { data: firstProfile } = await supabase.from('profiles').select('id').limit(1);
-            if (firstProfile?.[0]?.id) syncUserId = firstProfile[0].id;
+            const { data: p } = await supabase.from('public_profiles').select('id').limit(1);
+            if (p?.[0]?.id) syncUserId = p[0].id;
           }
 
           if (syncUserId) {
@@ -1070,23 +1173,32 @@ export function MasarifiProvider({ children }) {
     }
 
     return { success: true };
-  }, [currentUser, bumpTicket]);
+  }, [currentUser]);
 
   const updateTicketStatus = useCallback(async (ticketId, status, adminNotes = null) => {
-    const all = load(KEYS.TICKETS, []);
-    const idx = all.findIndex((t) => t.id === ticketId);
-    if (idx === -1) return { success: false };
+    const updatedTime = new Date().toISOString();
+    let updatedTicket = null;
 
-    all[idx].status = status;
-    if (adminNotes !== null) all[idx].adminNotes = adminNotes;
-    all[idx].updatedAt = new Date().toISOString();
+    setTickets((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === ticketId) {
+          updatedTicket = {
+            ...t,
+            status,
+            adminNotes: adminNotes !== null ? adminNotes : t.adminNotes,
+            updatedAt: updatedTime,
+          };
+          return updatedTicket;
+        }
+        return t;
+      });
+      save(KEYS.TICKETS, updated);
+      return updated;
+    });
 
-    save(KEYS.TICKETS, all);
-    bumpTicket();
-
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabase && updatedTicket) {
       try {
-        const updateData = { status, updated_at: all[idx].updatedAt };
+        const updateData = { status, updated_at: updatedTime };
         if (adminNotes !== null) updateData.admin_notes = adminNotes;
 
         const { error: dedicatedErr } = await supabase
@@ -1097,7 +1209,7 @@ export function MasarifiProvider({ children }) {
         if (dedicatedErr) {
           const ticketJson = JSON.stringify({
             __masarifi_type: 'support_ticket',
-            ...all[idx],
+            ...updatedTicket,
           });
           await supabase
             .from('expenses')
@@ -1110,25 +1222,27 @@ export function MasarifiProvider({ children }) {
     }
 
     return { success: true };
-  }, [bumpTicket]);
+  }, []);
 
   const deleteTicket = useCallback(async (ticketId) => {
-    const all = load(KEYS.TICKETS, []);
-    const filtered = all.filter((t) => t.id !== ticketId);
-    save(KEYS.TICKETS, filtered);
-    bumpTicket();
+    setTickets((prev) => {
+      const updated = prev.filter((t) => t.id !== ticketId);
+      save(KEYS.TICKETS, updated);
+      return updated;
+    });
 
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('support_tickets').delete().eq('id', ticketId);
         await supabase.from('expenses').delete().eq('id', `tk_${ticketId}`);
+        await supabase.from('expenses').delete().eq('id', ticketId);
       } catch (err) {
         console.warn('Supabase delete ticket error:', err);
       }
     }
 
     return { success: true };
-  }, [bumpTicket]);
+  }, []);
 
   // Track dismissed notifications for resolved tickets
   const [dismissedTicketIds, setDismissedTicketIds] = useState(() => load(KEYS.DISMISSED_NOTIFS, []));
@@ -1142,10 +1256,14 @@ export function MasarifiProvider({ children }) {
     });
   }, []);
 
-  // Tickets submitted by current user
+  // Tickets submitted by current user (matched by user ID or username case-insensitive)
   const userTickets = useMemo(() => {
     if (!currentUser) return [];
-    return tickets.filter((t) => t.userId === currentUser.id || t.userName === currentUser.name);
+    const currentName = (currentUser.name || '').trim().toLowerCase();
+    return tickets.filter((t) => 
+      (t.userId && t.userId === currentUser.id) ||
+      (t.userName && t.userName.trim().toLowerCase() === currentName)
+    );
   }, [tickets, currentUser]);
 
   // Resolved tickets that user hasn't dismissed yet
@@ -1310,7 +1428,7 @@ export function MasarifiProvider({ children }) {
     // Month nav
     viewMonth, goToPrevMonth, goToNextMonth, isCurrentMonth,
     // Budgets
-    budgets, saveBudget, getBudget, budgetAlerts, dismissBudgetAlert, requestNotificationPermission,
+    budgets, saveBudget, saveAllBudgets, getBudget, budgetAlerts, dismissBudgetAlert, requestNotificationPermission,
     // Export
     exportToPDF,
     // Reviews

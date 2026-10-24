@@ -71,13 +71,41 @@ function ChangePasswordForm({ onClose }) {
 }
 
 function BudgetsSection({ isDark, t, isRTL }) {
-  const { getBudget, saveBudget, requestNotificationPermission } = useMasarifi();
+  const { budgets, getBudget, saveBudget, saveAllBudgets, requestNotificationPermission } = useMasarifi();
   const [localBudgets, setLocalBudgets] = useState(() =>
-    EXPENSE_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: String(getBudget(cat.id) || '') }), {})
+    EXPENSE_CATEGORIES.reduce((acc, cat) => {
+      const val = budgets && budgets[cat.id] !== undefined ? budgets[cat.id] : getBudget(cat.id);
+      return { ...acc, [cat.id]: val ? String(val) : '' };
+    }, {})
   );
+
+  // Sync inputs whenever budgets are updated from cloud or another device
+  useEffect(() => {
+    if (budgets && typeof budgets === 'object') {
+      setLocalBudgets(
+        EXPENSE_CATEGORIES.reduce((acc, cat) => {
+          const val = budgets[cat.id];
+          return { ...acc, [cat.id]: val !== undefined && val !== null ? String(val) : '' };
+        }, {})
+      );
+    }
+  }, [budgets]);
+
   const [saved, setSaved] = useState(false);
-  const handleSave = () => {
-    EXPENSE_CATEGORIES.forEach(cat => { if (localBudgets[cat.id] !== '') saveBudget(cat.id, parseFloat(localBudgets[cat.id]) || 0); });
+  const handleSave = async () => {
+    const budgetMap = {};
+    EXPENSE_CATEGORIES.forEach(cat => {
+      if (localBudgets[cat.id] !== '') {
+        budgetMap[cat.id] = parseFloat(localBudgets[cat.id]) || 0;
+      }
+    });
+    if (saveAllBudgets) {
+      await saveAllBudgets(budgetMap);
+    } else {
+      EXPENSE_CATEGORIES.forEach(cat => {
+        if (localBudgets[cat.id] !== '') saveBudget(cat.id, parseFloat(localBudgets[cat.id]) || 0);
+      });
+    }
     if (requestNotificationPermission) requestNotificationPermission();
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
