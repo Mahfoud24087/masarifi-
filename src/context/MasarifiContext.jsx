@@ -542,6 +542,22 @@ export function MasarifiProvider({ children }) {
       }
     }
     fetchSupabaseExpenses();
+
+    // Supabase Realtime sync for instant multi-device expenses updates
+    const channel = supabase
+      .channel(`realtime_expenses_${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${currentUser.id}` },
+        () => {
+          fetchSupabaseExpenses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser, bump]);
 
   const allUserExpenses = useMemo(() => {
@@ -964,6 +980,17 @@ export function MasarifiProvider({ children }) {
       }
     }
     fetchPublicReviews();
+
+    const channel = supabase
+      .channel('realtime_reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
+        fetchPublicReviews();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [bumpReview]);
 
   const addReview = useCallback(async ({ stars, comment }) => {
