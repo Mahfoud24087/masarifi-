@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Globe, User, Lock, LogOut, Info, ChevronRight, ChevronLeft, Check, Download, Target, Star, MessageSquare, Shield, FileText } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 import { EXPENSE_CATEGORIES } from '../models/categories';
@@ -121,7 +121,7 @@ function BudgetsSection({ isDark, t, isRTL }) {
               <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t(`categories.${cat.id}`)}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <input type="number" dir="ltr" value={localBudgets[cat.id]} onChange={e => setLocalBudgets(p => ({ ...p, [cat.id]: e.target.value }))}
+              <input type="number" dir="ltr" value={localBudgets[cat.id] ?? ''} onChange={e => setLocalBudgets(p => ({ ...p, [cat.id]: e.target.value }))}
                 placeholder="0" className={inp} id={`masarifi-budget-${cat.id}`} />
               <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('common.currency')}</span>
             </div>
