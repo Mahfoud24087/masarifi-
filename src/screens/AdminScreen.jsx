@@ -9,6 +9,19 @@ import {
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 
+const formatCompactMRU = (amount = 0) => {
+  const val = Number(amount) || 0;
+  if (val >= 1_000_000) {
+    const formatted = (val / 1_000_000).toFixed(1).replace(/\.0$/, '');
+    return `${formatted}M`;
+  }
+  if (val >= 10_000) {
+    const formatted = (val / 1_000).toFixed(1).replace(/\.0$/, '');
+    return `${formatted}K`;
+  }
+  return val.toLocaleString('en-US');
+};
+
 export default function AdminScreen() {
   const { 
     t, isDark, isRTL, lang, setScreen,
@@ -314,13 +327,13 @@ export default function AdminScreen() {
                 <TrendingDown size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-red-400 tracking-tight" dir="ltr">
-              {(platformStats?.totalExpenseVolume || totalExpenses).toLocaleString('en-US')}
+            <p className="text-2xl sm:text-3xl font-extrabold text-red-400 tracking-tight flex items-baseline gap-1.5" dir="ltr" title={`${(platformStats?.totalExpenseVolume || totalExpenses).toLocaleString('en-US')} MRU`}>
+              <span>{formatCompactMRU(platformStats?.totalExpenseVolume || totalExpenses)}</span>
+              <span className="text-xs sm:text-sm font-bold opacity-80">MRU</span>
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-red-400 font-semibold flex-wrap">
-              <span>MRU</span>
               {platformStats?.totalExpenseTransactions > 0 && (
-                <span className="text-slate-500 text-[10px] ml-1">
+                <span className="text-slate-500 text-[10px]">
                   • {platformStats.totalExpenseTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
                 </span>
               )}
@@ -335,13 +348,13 @@ export default function AdminScreen() {
                 <TrendingUp size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight" dir="ltr">
-              {(platformStats?.totalIncomeVolume || totalIncome).toLocaleString('en-US')}
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight flex items-baseline gap-1.5" dir="ltr" title={`${(platformStats?.totalIncomeVolume || totalIncome).toLocaleString('en-US')} MRU`}>
+              <span>{formatCompactMRU(platformStats?.totalIncomeVolume || totalIncome)}</span>
+              <span className="text-xs sm:text-sm font-bold opacity-80">MRU</span>
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-emerald-400 font-semibold flex-wrap">
-              <span>MRU</span>
               {platformStats?.totalIncomeTransactions > 0 && (
-                <span className="text-slate-500 text-[10px] ml-1">
+                <span className="text-slate-500 text-[10px]">
                   • {platformStats.totalIncomeTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
                 </span>
               )}
@@ -356,14 +369,14 @@ export default function AdminScreen() {
                 <Zap size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
-              {(platformStats?.totalVolume || (totalExpenses + totalIncome)).toLocaleString('en-US')}
+            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1.5" dir="ltr" title={`${(platformStats?.totalVolume || (totalExpenses + totalIncome)).toLocaleString('en-US')} MRU`}>
+              <span>{formatCompactMRU(platformStats?.totalVolume || (totalExpenses + totalIncome))}</span>
+              <span className="text-xs sm:text-sm font-bold opacity-80 text-purple-300">MRU</span>
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-purple-400 font-semibold flex-wrap">
-              <span>MRU (Ouguiya)</span>
               {platformStats?.totalTransactions > 0 && (
-                <span className="text-slate-500 text-[10px] ml-1">
-                  • {platformStats.totalTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
+                <span className="text-slate-500 text-[10px]">
+                  • {platformStats.totalTransactions} {lang === 'ar' ? 'عملية كلية' : 'total tx'}
                 </span>
               )}
             </div>
