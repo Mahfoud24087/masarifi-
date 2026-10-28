@@ -5,7 +5,7 @@ import {
   Clock, AlertCircle, Trash2, Edit3, ExternalLink, RefreshCw, 
   Search, Bug, Lightbulb, UserCheck, HelpCircle, Phone, Mail,
   Send, Sparkles, Activity, Check, Eye, EyeOff, Settings, Key, User,
-  Flame, Award, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ArrowDownRight
+  Flame, Award, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ArrowDownRight, Sun, Moon
 } from 'lucide-react';
 import { useMasarifi } from '../context/MasarifiContext';
 
@@ -24,7 +24,7 @@ const formatCompactMRU = (amount = 0) => {
 
 export default function AdminScreen() {
   const { 
-    t, isDark, isRTL, lang, setScreen,
+    t, isDark, toggleTheme, isRTL, lang, setScreen,
     isAdminLoggedIn, logoutAdmin,
     adminAccount, updateAdminProfile,
     tickets, updateTicketStatus, deleteTicket,
@@ -234,15 +234,17 @@ export default function AdminScreen() {
         }`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="w-full max-w-sm rounded-3xl p-8 border border-slate-800 bg-slate-900/90 text-center">
+        <div className={`w-full max-w-sm rounded-3xl p-8 border text-center ${
+        isDark ? 'border-slate-800 bg-slate-900/90' : 'border-slate-200 bg-white shadow-xl'
+      }`}>
           <div 
             className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center text-white shadow-xl shadow-emerald-500/20"
             style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
           >
             <Shield size={32} />
           </div>
-          <h1 className="text-xl font-extrabold mb-2 text-white">{t('admin.title')}</h1>
-          <p className="text-xs text-slate-400 mb-6">{t('admin.pinSubtitle')}</p>
+          <h1 className={`text-xl font-extrabold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('admin.title')}</h1>
+          <p className={`text-xs mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.pinSubtitle')}</p>
           <button
             onClick={() => setScreen('auth-signin')}
             className="w-full py-3.5 rounded-2xl font-bold text-white text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
@@ -259,12 +261,14 @@ export default function AdminScreen() {
   return (
     <div 
       className={`min-h-screen pb-16 ${
-        isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-900 text-slate-100'
+        isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       }`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Top Bar */}
-      <header className="sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-xl">
+      <header className={`sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between border-b backdrop-blur-xl transition-colors ${
+        isDark ? 'border-slate-800/80 bg-slate-900/90' : 'border-slate-200 bg-white/95 shadow-sm'
+      }`}>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
             <div 
@@ -274,28 +278,55 @@ export default function AdminScreen() {
               <Shield size={18} />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm sm:text-base leading-tight text-white flex items-center gap-2">
+              <h1 className={`font-extrabold text-sm sm:text-base leading-tight flex items-center gap-2 ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}>
                 <span>{t('admin.title')}</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                  isDark
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
                   {adminAccount?.name || 'Admin'}
                 </span>
               </h1>
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>{t('admin.liveSystem')}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <button
-          onClick={logoutAdmin}
-          className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-red-950/40 border border-red-900 text-red-400 hover:bg-red-900/40 active:scale-95"
-          id="masarifi-admin-logout-btn"
-        >
-          <Lock size={14} />
-          <span>{t('admin.logout')}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Theme Switcher Button */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 ${
+              isDark 
+                ? 'bg-slate-800/80 border-slate-700 text-amber-300 hover:bg-slate-800' 
+                : 'bg-slate-100 border-slate-300 text-amber-600 hover:bg-slate-200'
+            }`}
+            title={isDark ? (lang === 'ar' ? 'تفعيل الوضع النهاري' : 'Light Mode') : (lang === 'ar' ? 'تفعيل الوضع الليلي' : 'Dark Mode')}
+            aria-label="Toggle Theme"
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            <span className="hidden sm:inline">{isDark ? (lang === 'ar' ? 'نهاري' : 'Light') : (lang === 'ar' ? 'ليلي' : 'Dark')}</span>
+          </button>
+
+          <button
+            onClick={logoutAdmin}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 ${
+              isDark
+                ? 'bg-red-950/40 border-red-900 text-red-400 hover:bg-red-900/40'
+                : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+            }`}
+            id="masarifi-admin-logout-btn"
+          >
+            <Lock size={14} />
+            <span>{t('admin.logout')}</span>
+          </button>
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
@@ -303,14 +334,16 @@ export default function AdminScreen() {
         {/* KPI Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
           {/* Card 1: Users */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiUsers')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.kpiUsers')}</span>
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                 <Users size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
+            <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr">
               {totalUsersCount}
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-blue-400 font-semibold">
@@ -320,9 +353,11 @@ export default function AdminScreen() {
           </div>
 
           {/* Card 2: Registered Expenses (All Platform Expenses) */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-red-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-red-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiExpenses') || (lang === 'ar' ? 'إجمالي المصروفات' : 'All Expenses')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.kpiExpenses') || (lang === 'ar' ? 'إجمالي المصروفات' : 'All Expenses')}</span>
               <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20">
                 <TrendingDown size={18} />
               </div>
@@ -333,7 +368,7 @@ export default function AdminScreen() {
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-red-400 font-semibold flex-wrap">
               {platformStats?.totalExpenseTransactions > 0 && (
-                <span className="text-slate-500 text-[10px]">
+                <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   • {platformStats.totalExpenseTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
                 </span>
               )}
@@ -341,9 +376,11 @@ export default function AdminScreen() {
           </div>
 
           {/* Card 3: Registered Income (All Platform Income) */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiIncome') || (lang === 'ar' ? 'إجمالي الدخل' : 'All Income')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.kpiIncome') || (lang === 'ar' ? 'إجمالي الدخل' : 'All Income')}</span>
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                 <TrendingUp size={18} />
               </div>
@@ -354,7 +391,7 @@ export default function AdminScreen() {
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-emerald-400 font-semibold flex-wrap">
               {platformStats?.totalIncomeTransactions > 0 && (
-                <span className="text-slate-500 text-[10px]">
+                <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   • {platformStats.totalIncomeTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
                 </span>
               )}
@@ -362,20 +399,22 @@ export default function AdminScreen() {
           </div>
 
           {/* Card 4: Tracked Volume (Global Total Tracked Volume) */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-purple-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-purple-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiVolume')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.kpiVolume')}</span>
               <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
                 <Zap size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1.5" dir="ltr" title={`${(platformStats?.totalVolume || (totalExpenses + totalIncome)).toLocaleString('en-US')} MRU`}>
+            <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight flex items-baseline gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr" title={`${(platformStats?.totalVolume || (totalExpenses + totalIncome)).toLocaleString('en-US')} MRU`}>
               <span>{formatCompactMRU(platformStats?.totalVolume || (totalExpenses + totalIncome))}</span>
-              <span className="text-xs sm:text-sm font-bold opacity-80 text-purple-300">MRU</span>
+              <span className={`text-xs sm:text-sm font-bold opacity-80 ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>MRU</span>
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-purple-400 font-semibold flex-wrap">
               {platformStats?.totalTransactions > 0 && (
-                <span className="text-slate-500 text-[10px]">
+                <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   • {platformStats.totalTransactions} {lang === 'ar' ? 'عملية كلية' : 'total tx'}
                 </span>
               )}
@@ -383,14 +422,16 @@ export default function AdminScreen() {
           </div>
 
           {/* Card 5: Resolution Rate */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-teal-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-teal-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.resolutionRate')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.resolutionRate')}</span>
               <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center border border-teal-500/20">
                 <CheckCircle2 size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
+            <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr">
               {resolutionRate}%
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-teal-400 font-semibold">
@@ -399,14 +440,16 @@ export default function AdminScreen() {
           </div>
 
           {/* Card 6: Community Rating */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
+          <div className={`p-4 sm:p-5 rounded-3xl border shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all ${
+            isDark ? 'border-slate-800 bg-slate-900/80' : 'border-slate-200 bg-white shadow-sm'
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiRating')}</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('admin.kpiRating')}</span>
               <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                 <Star size={18} className="fill-amber-400" />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
+            <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr">
               ⭐ {avgRating}
             </p>
             <div className="flex items-center gap-1 mt-2 text-[11px] text-amber-400 font-semibold">
@@ -416,7 +459,9 @@ export default function AdminScreen() {
         </div>
 
         {/* Tab Navigation Ribbon */}
-        <div className="flex rounded-2xl p-1.5 mb-6 border border-slate-800 bg-slate-900/90 shadow-md overflow-x-auto">
+        <div className={`flex rounded-2xl p-1.5 mb-6 border shadow-md overflow-x-auto transition-colors ${
+          isDark ? 'border-slate-800 bg-slate-900/90' : 'border-slate-200 bg-white'
+        }`}>
           {[
             { id: 'tickets', label: t('admin.tabTickets'), count: openTicketsCount, highlight: openTicketsCount > 0 },
             { id: 'stats', label: t('admin.tabStats') },
@@ -430,7 +475,7 @@ export default function AdminScreen() {
               className={`flex-1 min-w-[110px] py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === tab.id
                   ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <span>{tab.label}</span>
@@ -440,7 +485,7 @@ export default function AdminScreen() {
                     ? 'bg-white text-emerald-700' 
                     : tab.highlight
                     ? 'bg-amber-400 text-slate-900 font-black'
-                    : 'bg-slate-800 text-slate-300'
+                    : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
                 }`}>
                   {tab.count}
                 </span>
@@ -467,7 +512,7 @@ export default function AdminScreen() {
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                       ticketFilter === f.id
                         ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800 hover:text-white'
+                        : isDark ? 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>{f.label}</span>
@@ -487,7 +532,7 @@ export default function AdminScreen() {
                     className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all ${
                       ticketCatFilter === cat
                         ? 'border-emerald-500 bg-emerald-950/60 text-emerald-300 font-bold'
-                        : 'border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+                        : isDark ? 'border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40' : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
                     {cat === 'all' ? 'All Types' : t(`support.${cat}`)}
@@ -498,7 +543,9 @@ export default function AdminScreen() {
 
             {/* Tickets list */}
             {filteredTickets.length === 0 ? (
-              <div className="p-12 rounded-3xl text-center border border-slate-800 bg-slate-900/60 text-slate-400">
+              <div className={`p-12 rounded-3xl text-center border ${
+                isDark ? 'border-slate-800 bg-slate-900/60 text-slate-400' : 'border-slate-200 bg-white text-slate-500 shadow-sm'
+              }`}>
                 <CheckCircle2 size={40} className="mx-auto mb-3 text-emerald-400" />
                 <p className="font-bold text-sm text-slate-300">{t('admin.noTickets')}</p>
                 <p className="text-xs text-slate-500 mt-1">Inbox is all clear</p>
@@ -515,18 +562,20 @@ export default function AdminScreen() {
                       key={ticket.id}
                       className={`p-5 rounded-3xl border transition-all ${
                         isResolved
-                          ? 'bg-slate-900/60 border-slate-800/80 opacity-90'
+                          ? isDark ? 'bg-slate-900/60 border-slate-800/80 opacity-90' : 'bg-white border-slate-200 opacity-90 shadow-sm'
                           : isNew
-                          ? 'bg-slate-900 border-blue-500/30 shadow-lg shadow-blue-500/5'
-                          : 'bg-slate-900 border-amber-500/30 shadow-lg shadow-amber-500/5'
+                          ? isDark ? 'bg-slate-900 border-blue-500/30 shadow-lg shadow-blue-500/5' : 'bg-white border-blue-300 shadow-sm'
+                          : isDark ? 'bg-slate-900 border-amber-500/30 shadow-lg shadow-amber-500/5' : 'bg-white border-amber-300 shadow-sm'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="p-1.5 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700">
+                          <span className={`p-1.5 rounded-xl flex items-center justify-center border ${
+                            isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-200 text-slate-700'
+                          }`}>
                             {getCatIcon(ticket.category)}
                           </span>
-                          <span className="font-extrabold text-sm sm:text-base text-white">
+                          <span className={`font-extrabold text-sm sm:text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             {ticket.subject}
                           </span>
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
@@ -550,14 +599,18 @@ export default function AdminScreen() {
                       </div>
 
                       {/* User message block */}
-                      <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 mb-3 text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                      <div className={`p-3.5 rounded-2xl border mb-3 text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
+                        isDark ? 'bg-slate-950/60 border-slate-800/80 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}>
                         {ticket.message}
                       </div>
 
                       {/* Ticket Meta / User info & direct contact buttons */}
-                      <div className="p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs mb-3 bg-slate-800/50 border border-slate-800 text-slate-300">
+                      <div className={`p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs mb-3 border ${
+                        isDark ? 'bg-slate-800/50 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                      }`}>
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-white flex items-center gap-1.5">
+                          <span className={`font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[11px] font-black">
                               {ticket.userName?.[0]?.toUpperCase() || 'U'}
                             </span>
@@ -599,7 +652,7 @@ export default function AdminScreen() {
                       </div>
 
                       {/* Admin Resolution & Reply Section */}
-                      <div className="pt-3 border-t border-slate-800 space-y-3">
+                      <div className={`pt-3 border-t space-y-3 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
                             💬 {t('admin.adminNotes')}
@@ -609,14 +662,18 @@ export default function AdminScreen() {
                             placeholder={ticket.adminNotes || t('admin.adminNotes')}
                             value={adminNotes[ticket.id] !== undefined ? adminNotes[ticket.id] : (ticket.adminNotes || '')}
                             onChange={(e) => setAdminNotes({ ...adminNotes, [ticket.id]: e.target.value })}
-                            className="w-full px-3.5 py-2.5 rounded-2xl text-xs border outline-none bg-slate-950 border-slate-700 text-white placeholder-slate-500 focus:border-emerald-500 resize-none"
+                            className={`w-full px-3.5 py-2.5 rounded-2xl text-xs border outline-none resize-none focus:border-emerald-500 ${
+                              isDark ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                            }`}
                           />
                         </div>
 
                         <div className="flex items-center gap-2 justify-end flex-wrap">
                           <button
                             onClick={() => handleSaveNote(ticket.id)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                              isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                            }`}
                           >
                             💾 {t('admin.saveNotes')}
                           </button>
@@ -660,31 +717,31 @@ export default function AdminScreen() {
         {/* ─── TAB 2: PLATFORM HEALTH & ANALYTICS ─── */}
         {activeTab === 'stats' && (
           <div className="space-y-6">
-            <div className="p-6 rounded-3xl border border-slate-800 bg-slate-900 shadow-lg">
-              <h3 className="font-extrabold text-base mb-4 flex items-center gap-2 text-white">
+            <div className={`p-6 rounded-3xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}>
+              <h3 className={`font-extrabold text-base mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <Activity size={18} className="text-emerald-400" />
                 <span>{t('admin.systemHealth')}</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="font-medium text-slate-400">Database Engine</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     Supabase PostgreSQL Active
                   </span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="font-medium text-slate-400">AI Financial Advisor</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
                     Groq LLaMA 3.3 70B Online
                   </span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="font-medium text-slate-400">Application Version</span>
                   <span className="font-bold text-white">v2.3.0 Executive Edition</span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="font-medium text-slate-400">Base Currency</span>
                   <span className="font-bold text-white">Mauritanian Ouguiya (MRU)</span>
                 </div>
@@ -692,19 +749,19 @@ export default function AdminScreen() {
             </div>
 
             {/* Ticket Distribution Breakdown */}
-            <div className="p-6 rounded-3xl border border-slate-800 bg-slate-900 shadow-lg">
-              <h3 className="font-extrabold text-base mb-4 text-white">
+            <div className={`p-6 rounded-3xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}>
+              <h3 className={`font-extrabold text-base mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Support Category Breakdown
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 {['bug', 'suggestion', 'account', 'general'].map((c) => {
                   const count = tickets.filter(t => t.category === c).length;
                   return (
-                    <div key={c} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                    <div key={c} className={`p-3.5 rounded-2xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="mx-auto mb-1 flex items-center justify-center">
                         {getCatIcon(c)}
                       </div>
-                      <p className="text-xl font-black text-white" dir="ltr">{count}</p>
+                      <p className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr">{count}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">{t(`support.${c}`)}</p>
                     </div>
                   );
@@ -718,7 +775,7 @@ export default function AdminScreen() {
         {activeTab === 'reviews' && (
           <div className="space-y-4">
             {reviews.length === 0 ? (
-              <div className="p-12 rounded-3xl text-center border border-slate-800 bg-slate-900/60 text-slate-400">
+              <div className={`p-12 rounded-3xl text-center border ${isDark ? 'border-slate-800 bg-slate-900/60 text-slate-400' : 'border-slate-200 bg-white text-slate-500 shadow-sm'}`}>
                 <Star size={40} className="mx-auto mb-2 text-amber-400" />
                 <p className="font-bold text-sm text-slate-300">No community reviews yet</p>
               </div>
@@ -726,21 +783,21 @@ export default function AdminScreen() {
               reviews.map((r) => (
                 <div 
                   key={r.id}
-                  className="p-5 rounded-3xl border border-slate-800 bg-slate-900 flex items-start justify-between gap-4 shadow-md"
+                  className={`p-5 rounded-3xl border flex items-start justify-between gap-4 shadow-md ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}
                 >
                   <div className="space-y-1.5 flex-1">
                     <div className="flex items-center gap-2">
                       <div className="flex text-amber-400 text-xs">
                         {'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}
                       </div>
-                      <span className="font-bold text-sm text-white">{r.userName}</span>
+                      <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{r.userName}</span>
                       <span className="text-[11px] text-slate-400" dir="ltr">
                         {new Date(r.date).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
                           day: 'numeric', month: 'short', year: 'numeric'
                         })}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed text-slate-300">
+                    <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                       "{r.comment}"
                     </p>
                   </div>
@@ -763,7 +820,11 @@ export default function AdminScreen() {
           <div className="space-y-5">
             {/* ── Top Most Active User Highlight Card ── */}
             {topActiveUser && (
-              <div className="p-5 sm:p-6 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 shadow-xl relative overflow-hidden">
+              <div className={`p-5 sm:p-6 rounded-3xl border shadow-xl relative overflow-hidden ${
+                isDark 
+                  ? 'border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900'
+                  : 'border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white shadow-sm'
+              }`}>
                 <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
                   <div className="flex items-center gap-3.5">
@@ -777,7 +838,7 @@ export default function AdminScreen() {
                           {lang === 'ar' ? 'المستخدم الأكثر نشاطاً في التطبيق' : 'Most Active User'}
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-white flex items-center gap-2">
+                      <h4 className={`text-lg font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         <span>{topActiveUser.name}</span>
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
                           #1 Leader
@@ -791,7 +852,9 @@ export default function AdminScreen() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 bg-slate-950/80 px-4 py-3 rounded-2xl border border-slate-800">
+                  <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${
+                    isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-amber-200/80 shadow-sm'
+                  }`}>
                     <div className="text-right">
                       <p className="text-xs text-slate-400">{lang === 'ar' ? 'إجمالي العمليات' : 'Total Transactions'}</p>
                       <p className="text-lg font-black text-emerald-400" dir="ltr">
@@ -814,9 +877,9 @@ export default function AdminScreen() {
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   placeholder={lang === 'ar' ? 'بحث عن مستخدم بالاسم...' : 'Search registered users by name...'}
-                  className={`w-full px-4 py-3.5 rounded-2xl text-sm border border-slate-800 bg-slate-900 text-white outline-none focus:border-emerald-500 shadow-sm ${
-                    isRTL ? 'pr-11' : 'pl-11'
-                  }`}
+                  className={`w-full px-4 py-3.5 rounded-2xl text-sm border outline-none focus:border-emerald-500 shadow-sm ${
+                    isDark ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-900'
+                  } ${isRTL ? 'pr-11' : 'pl-11'}`}
                 />
                 <Search 
                   size={16} 
@@ -824,14 +887,18 @@ export default function AdminScreen() {
                 />
               </div>
 
-              <div className="text-xs text-slate-400 font-medium px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 shrink-0">
+              <div className={`text-xs font-medium px-3 py-2 rounded-xl border shrink-0 ${
+                isDark ? 'text-slate-400 bg-slate-900/60 border-slate-800' : 'text-slate-600 bg-white border-slate-200 shadow-sm'
+              }`}>
                 {lang === 'ar' ? 'إجمالي المسجلين:' : 'Total Users:'}{' '}
-                <span className="font-bold text-white">{sortedAndFilteredUsers.length}</span>
+                <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{sortedAndFilteredUsers.length}</span>
               </div>
             </div>
 
             {/* ── Transaction Type Filter Tabs ── */}
-            <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-900/80 border border-slate-800 w-full">
+            <div className={`flex items-center gap-2 p-1 rounded-2xl border w-full ${
+              isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
               {[
                 { id: 'all', label: lang === 'ar' ? 'الكل' : 'All', icon: null },
                 { id: 'expenses', label: lang === 'ar' ? 'المصروفات فقط' : 'Expenses Only', icon: <span className="text-red-400">↘</span> },
@@ -847,7 +914,7 @@ export default function AdminScreen() {
                         : f.id === 'income'
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'bg-slate-700 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   {f.icon}
@@ -857,8 +924,10 @@ export default function AdminScreen() {
             </div>
 
             {/* ── Paginated Users List (Not showing all at once!) ── */}
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-md overflow-hidden">
-              <div className="divide-y divide-slate-800">
+            <div className={`rounded-3xl border shadow-md overflow-hidden ${
+              isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'
+            }`}>
+              <div className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-200'}`}>
                 {paginatedUsers.length === 0 ? (
                   <div className="p-10 text-center text-slate-400 text-sm font-medium">
                     {lang === 'ar' ? 'لم يتم العثور على أي مستخدم مطابق' : 'No matching users found'}
@@ -871,7 +940,9 @@ export default function AdminScreen() {
                       <div 
                         key={u.id || i} 
                         onClick={() => setSelectedUserDetail(u)}
-                        className="p-4 flex items-center justify-between gap-3 text-sm hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                        className={`p-4 flex items-center justify-between gap-3 text-sm transition-colors cursor-pointer group ${
+                          isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50'
+                        }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold border transition-transform group-hover:scale-105 ${
@@ -883,7 +954,7 @@ export default function AdminScreen() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-white group-hover:text-emerald-400 transition-colors">{u.name}</p>
+                              <p className={`font-bold transition-colors group-hover:text-emerald-500 ${isDark ? 'text-white' : 'text-slate-900'}`}>{u.name}</p>
                               {isTop1 && (
                                 <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30">
                                   Top Active
@@ -905,7 +976,9 @@ export default function AdminScreen() {
 
                         <div className="flex items-center gap-2">
                           {/* Expense count */}
-                          <div className="text-right px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-900/40 group-hover:border-red-500/30 transition-colors">
+                          <div className={`text-right px-2.5 py-1.5 rounded-xl border transition-colors ${
+                            isDark ? 'bg-red-950/40 border-red-900/40 group-hover:border-red-500/30' : 'bg-red-50 border-red-200 group-hover:border-red-300'
+                          }`}>
                             <span className="text-xs font-black text-red-400" dir="ltr">
                               {u.expenseCount !== undefined ? u.expenseCount : 0}
                             </span>
@@ -915,7 +988,9 @@ export default function AdminScreen() {
                           </div>
                           {/* Income count — only shown when available */}
                           {(u.incomeCount !== undefined) && (
-                            <div className="text-right px-2.5 py-1.5 rounded-xl bg-emerald-950/40 border border-emerald-900/40 group-hover:border-emerald-500/30 transition-colors">
+                            <div className={`text-right px-2.5 py-1.5 rounded-xl border transition-colors ${
+                              isDark ? 'bg-emerald-950/40 border-emerald-900/40 group-hover:border-emerald-500/30' : 'bg-emerald-50 border-emerald-200 group-hover:border-emerald-300'
+                            }`}>
                               <span className="text-xs font-black text-emerald-400" dir="ltr">
                                 {u.incomeCount || 0}
                               </span>
@@ -936,7 +1011,9 @@ export default function AdminScreen() {
 
               {/* ── Pagination Bar: Controls showing users in pages ── */}
               {totalUserPages > 1 && (
-                <div className="p-3.5 bg-slate-950/70 border-t border-slate-800 flex items-center justify-between text-xs">
+                <div className={`p-3.5 border-t flex items-center justify-between text-xs ${
+                  isDark ? 'bg-slate-950/70 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <span className="text-slate-400 font-medium">
                     {lang === 'ar' 
                       ? `الصفحة ${userPage} من ${totalUserPages}` 
@@ -950,8 +1027,8 @@ export default function AdminScreen() {
                       onClick={() => setUserPage(p => Math.max(p - 1, 1))}
                       className={`p-2 rounded-xl border flex items-center gap-1 transition-all ${
                         userPage <= 1 
-                          ? 'border-slate-800 text-slate-600 cursor-not-allowed' 
-                          : 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95'
+                          ? isDark ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                          : isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95' : 'border-slate-300 text-slate-700 hover:bg-slate-200 active:scale-95'
                       }`}
                     >
                       <ChevronLeft size={15} />
@@ -972,7 +1049,7 @@ export default function AdminScreen() {
                               className={`w-7 h-7 rounded-xl font-bold transition-all ${
                                 userPage === p 
                                   ? 'bg-emerald-600 text-white shadow-sm' 
-                                  : 'text-slate-400 hover:bg-slate-800'
+                                  : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-200'
                               }`}
                             >
                               {p}
@@ -987,8 +1064,8 @@ export default function AdminScreen() {
                       onClick={() => setUserPage(p => Math.min(p + 1, totalUserPages))}
                       className={`p-2 rounded-xl border flex items-center gap-1 transition-all ${
                         userPage >= totalUserPages 
-                          ? 'border-slate-800 text-slate-600 cursor-not-allowed' 
-                          : 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95'
+                          ? isDark ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                          : isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800 active:scale-95' : 'border-slate-300 text-slate-700 hover:bg-slate-200 active:scale-95'
                       }`}
                     >
                       <span className="hidden sm:inline">{lang === 'ar' ? 'التالي' : 'Next'}</span>
@@ -1004,7 +1081,9 @@ export default function AdminScreen() {
         {/* ─── TAB 5: ADMIN PROFILE & SECURITY SETTINGS ─── */}
         {activeTab === 'settings' && (
           <div className="max-w-xl mx-auto space-y-6">
-            <div className="p-6 sm:p-7 rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
+            <div className={`p-6 sm:p-7 rounded-3xl border shadow-xl ${
+              isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'
+            }`}>
               <div className="flex items-center gap-3 mb-6">
                 <div 
                   className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"
@@ -1013,7 +1092,7 @@ export default function AdminScreen() {
                   <Settings size={22} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-white">
+                  <h3 className={`font-extrabold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {t('admin.adminProfileTitle')}
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -1025,7 +1104,7 @@ export default function AdminScreen() {
               <form onSubmit={handleSaveAdminSettings} className="space-y-4">
                 {/* Admin Username */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     <User size={14} className="text-emerald-400" />
                     <span>{t('admin.adminNameLabel')}</span>
                   </label>
@@ -1033,7 +1112,9 @@ export default function AdminScreen() {
                     type="text"
                     value={settingsForm.name}
                     onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all"
+                    className={`w-full px-4 py-3 rounded-2xl text-sm border outline-none focus:border-emerald-500 transition-all ${
+                      isDark ? 'border-slate-700 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'
+                    }`}
                   />
                   {settingsErrors.name && (
                     <p className="text-red-400 text-xs mt-1">{settingsErrors.name}</p>
@@ -1042,7 +1123,7 @@ export default function AdminScreen() {
 
                 {/* Current Admin Password */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     <Key size={14} className="text-amber-400" />
                     <span>{t('admin.adminPasswordLabel')}</span>
                   </label>
@@ -1052,9 +1133,9 @@ export default function AdminScreen() {
                       value={settingsForm.currentPassword}
                       onChange={(e) => setSettingsForm({ ...settingsForm, currentPassword: e.target.value })}
                       placeholder="••••••••"
-                      className={`w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all ${
-                        isRTL ? 'pl-11' : 'pr-11'
-                      }`}
+                      className={`w-full px-4 py-3 rounded-2xl text-sm border outline-none focus:border-emerald-500 transition-all ${
+                        isDark ? 'border-slate-700 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'
+                      } ${isRTL ? 'pl-11' : 'pr-11'}`}
                     />
                     <button
                       type="button"
@@ -1070,8 +1151,8 @@ export default function AdminScreen() {
                 </div>
 
                 {/* New Admin Password (Optional) */}
-                <div className="pt-2 border-t border-slate-800">
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <div className={`pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                  <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     <Lock size={14} className="text-emerald-400" />
                     <span>{t('admin.adminNewPasswordLabel')}</span>
                   </label>
@@ -1081,9 +1162,9 @@ export default function AdminScreen() {
                       value={settingsForm.newPassword}
                       onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })}
                       placeholder="••••••••"
-                      className={`w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all ${
-                        isRTL ? 'pl-11' : 'pr-11'
-                      }`}
+                      className={`w-full px-4 py-3 rounded-2xl text-sm border outline-none focus:border-emerald-500 transition-all ${
+                        isDark ? 'border-slate-700 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'
+                      } ${isRTL ? 'pl-11' : 'pr-11'}`}
                     />
                     <button
                       type="button"
@@ -1109,7 +1190,9 @@ export default function AdminScreen() {
                       value={settingsForm.confirmPassword}
                       onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })}
                       placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-700 bg-slate-950 text-white outline-none focus:border-emerald-500 transition-all"
+                      className={`w-full px-4 py-3 rounded-2xl text-sm border outline-none focus:border-emerald-500 transition-all ${
+                      isDark ? 'border-slate-700 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'
+                    }`}
                     />
                     {settingsErrors.confirmPassword && (
                       <p className="text-red-400 text-xs mt-1">{settingsErrors.confirmPassword}</p>
@@ -1135,9 +1218,11 @@ export default function AdminScreen() {
 
       {/* ─── USER DETAIL MODAL (Shows exact transactions count and profile info) ─── */}
       {selectedUserDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div 
-            className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl p-6 text-white relative animate-scale-up"
+            className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 relative animate-scale-up ${
+              isDark ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'
+            }`}
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {/* Close button */}
@@ -1174,7 +1259,9 @@ export default function AdminScreen() {
 
             {/* Metrics cards */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-slate-950 border border-red-900/30">
+              <div className={`p-4 rounded-2xl border ${
+                isDark ? 'bg-slate-950 border-red-900/30' : 'bg-red-50/70 border-red-200'
+              }`}>
                 <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1">
                   <span className="text-red-400 text-base">↘</span>
                   {lang === 'ar' ? 'المصروفات' : 'Expenses'}
@@ -1192,7 +1279,9 @@ export default function AdminScreen() {
                 )}
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-900/30">
+              <div className={`p-4 rounded-2xl border ${
+                isDark ? 'bg-slate-950 border-emerald-900/30' : 'bg-emerald-50/70 border-emerald-200'
+              }`}>
                 <span className="text-xs text-slate-400 block mb-1 flex items-center gap-1">
                   <span className="text-emerald-400 text-base">↗</span>
                   {lang === 'ar' ? 'الدخل' : 'Income'}
@@ -1213,7 +1302,7 @@ export default function AdminScreen() {
 
             {/* Total & Join Date */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                 <span className="text-xs text-slate-400 block mb-1">
                   {lang === 'ar' ? 'إجمالي المعاملات' : 'Total Transactions'}
                 </span>
@@ -1225,7 +1314,7 @@ export default function AdminScreen() {
                 </span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                 <span className="text-xs text-slate-400 block mb-1">
                   {lang === 'ar' ? 'تاريخ الانضمام' : 'Join Date'}
                 </span>
@@ -1243,7 +1332,11 @@ export default function AdminScreen() {
             {/* Action button */}
             <button
               onClick={() => setSelectedUserDetail(null)}
-              className="w-full py-3 rounded-2xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white transition-all active:scale-95"
+              className={`w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-700 text-white' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+              }`}
             >
               {lang === 'ar' ? 'إغلاق' : 'Close'}
             </button>
