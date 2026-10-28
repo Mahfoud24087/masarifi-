@@ -18,7 +18,7 @@ const toLatinDigits = (str = '') =>
 export default function AIAdvisorModal({ isOpen, onClose }) {
   const {
     t, isDark, isRTL, lang, user,
-    expenses, totalExpenses, totalIncome, netBalance, budgets,
+    expenses, allUserExpenses, totalExpenses, totalIncome, netBalance, budgets,
   } = useMasarifi();
 
   // Multi-chat sessions state
@@ -430,7 +430,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
   const createNewChat = () => {
     const initialWelcome = generateFinancialInsight({
       prompt: 'hello',
-      expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
+      expenses: (allUserExpenses && allUserExpenses.length > 0 ? allUserExpenses : expenses), totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
       conversationHistory: [],
     });
 
@@ -502,7 +502,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
       const groqRes = await askGroqAI({
         prompt: textToSend,
         apiKey: import.meta.env.VITE_GROQ_API_KEY,
-        expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang,
+        expenses: (allUserExpenses && allUserExpenses.length > 0 ? allUserExpenses : expenses), totalExpenses, totalIncome, netBalance, budgets, user, lang,
         conversationHistory: updatedMessages,
       });
 
@@ -517,7 +517,7 @@ export default function AIAdvisorModal({ isOpen, onClose }) {
     if (!reply) {
       reply = generateFinancialInsight({
         prompt: textToSend,
-        expenses, totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
+        expenses: (allUserExpenses && allUserExpenses.length > 0 ? allUserExpenses : expenses), totalExpenses, totalIncome, netBalance, budgets, user, lang, t,
         conversationHistory: updatedMessages,
       });
     }

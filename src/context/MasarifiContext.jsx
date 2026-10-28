@@ -1379,7 +1379,14 @@ export function MasarifiProvider({ children }) {
 
   // Platform all users list (local + Supabase + expense count for activity tracking)
   const [allUsersList, setAllUsersList] = useState(() => load(KEYS.USERS, []));
-  const [platformStats, setPlatformStats] = useState({ totalVolume: 0, totalTransactions: 0 });
+  const [platformStats, setPlatformStats] = useState({ 
+    totalVolume: 0, 
+    totalTransactions: 0,
+    totalExpenseVolume: 0,
+    totalExpenseTransactions: 0,
+    totalIncomeVolume: 0,
+    totalIncomeTransactions: 0,
+  });
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -1406,15 +1413,44 @@ export function MasarifiProvider({ children }) {
             );
           }
 
-          // Fetch global platform tracked volume
-          const { data: statsData, error: statsErr } = await supabase.rpc('admin_get_platform_stats', {
-            p_admin_id: currentUser.id,
-          });
-          if (!statsErr && statsData && statsData.length > 0) {
-            setPlatformStats({
-              totalVolume: Number(statsData[0].total_volume) || 0,
-              totalTransactions: Number(statsData[0].total_transactions) || 0,
+          // Fetch global platform tracked volume split by expenses and income
+          const { data: expData, error: expErr } = await supabase
+            .from('expenses')
+            .select('type, amount')
+            .neq('category', '__support_ticket__');
+
+          if (!expErr && expData) {
+            let expCount = 0, expTotal = 0, incCount = 0, incTotal = 0;
+            expData.forEach((e) => {
+              const amt = Number(e.amount) || 0;
+              if (e.type === 'income') {
+                incCount++;
+                incTotal += amt;
+              } else {
+                expCount++;
+                expTotal += amt;
+              }
             });
+            setPlatformStats({
+              totalVolume: expTotal + incTotal,
+              totalTransactions: expCount + incCount,
+              totalExpenseVolume: expTotal,
+              totalExpenseTransactions: expCount,
+              totalIncomeVolume: incTotal,
+              totalIncomeTransactions: incCount,
+            });
+          } else {
+            // Fallback to RPC
+            const { data: statsData } = await supabase.rpc('admin_get_platform_stats', {
+              p_admin_id: currentUser.id,
+            });
+            if (statsData && statsData.length > 0) {
+              setPlatformStats((prev) => ({
+                ...prev,
+                totalVolume: Number(statsData[0].total_volume) || 0,
+                totalTransactions: Number(statsData[0].total_transactions) || 0,
+              }));
+            }
           }
           return;
         }

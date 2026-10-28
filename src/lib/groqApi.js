@@ -34,10 +34,15 @@ export async function askGroqAI({
     return { success: false, error: 'NO_API_KEY' };
   }
 
-  // Format financial snapshot with notes and custom category
-  const topExpenses = expenses
-    .slice(0, 15)
-    .map(e => `- ${e.title}: ${e.amount} MRU (${e.custom_category || e.category}, ${e.date}${e.notes ? ` - Note: "${e.notes}"` : ''})`)
+  // Sort all transactions chronologically from earliest to newest
+  const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const earliestDate = sortedExpenses[0]?.date || 'N/A';
+  const latestDate = sortedExpenses[sortedExpenses.length - 1]?.date || 'N/A';
+
+  // Format full chronological financial record (up to 150 transactions from Day 1)
+  const fullTransactionHistory = sortedExpenses
+    .slice(-150)
+    .map(e => `- ${e.date}: ${e.title} -> ${e.amount} MRU [${e.type || 'expense'}] (${e.custom_category || e.category}${e.notes ? ` - Note: "${e.notes}"` : ''})`)
     .join('\n');
 
   // Strict financial boundary ENFORCED FOR ALL USERS
@@ -94,10 +99,13 @@ User Financial Snapshot:
 - Total Income: ${totalIncome} MRU
 - Total Expenses: ${totalExpenses} MRU
 - Net Balance: ${netBalance} MRU
-- Recent Expenses:
-${topExpenses || 'No expenses recorded yet.'}
+- Total Recorded Transactions: ${sortedExpenses.length} transactions
+- Activity Timeline: From ${earliestDate} (Day 1) to ${latestDate}
+- Complete Chronological Financial Record (From Day 1 to latest):
+${fullTransactionHistory || 'No transactions recorded yet.'}
 
 Rules for Responses:
+0. CRITICAL START DATE & TIMELINE ACCURACY: The user started recording on ${earliestDate} (Day 1). Their full chronological transaction history from ${earliestDate} to ${latestDate} is provided in full above. NEVER claim that days between ${earliestDate} and ${latestDate} are missing if they exist in the history above. When asked to analyze from day 1 ("منذ أول يوم") or asked when they started, always state clearly that they started on ${earliestDate} and analyze the entire period from ${earliestDate} onwards!
 1. Always respond in the EXACT language used by the user. If asked in English, reply in 100% natural English. If asked in Arabic, reply in natural Arabic. If asked in French, reply in natural French.
 2. NUMBERS & DIGITS STRICT RULE: ALWAYS and EXCLUSIVELY use Western/Latin digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) in all your responses, even when answering in Arabic! NEVER write Eastern Arabic numerals (like ٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩). Always write numbers like: 150 أوقية, 50%, 10 مايو, 1., 2., 3.
 3. When answering in English, do NOT randomly insert Arabic words like "(مصاريفي)" or "(محفوظ خيري)" in parentheses unless asked. Keep English text purely in English so punctuation and layout remain clean and natural.

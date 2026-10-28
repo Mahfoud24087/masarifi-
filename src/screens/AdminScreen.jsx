@@ -287,7 +287,8 @@ export default function AdminScreen() {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
         {/* KPI Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        {/* KPI Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
           {/* Card 1: Users */}
           <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
             <div className="flex items-center justify-between mb-2">
@@ -305,28 +306,70 @@ export default function AdminScreen() {
             </div>
           </div>
 
-          {/* Card 2: Tracked Volume (Global Platform Total Volume) */}
-          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          {/* Card 2: Registered Expenses (All Platform Expenses) */}
+          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-red-500/40 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-400">{t('admin.kpiVolume')}</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                <TrendingUp size={18} />
+              <span className="text-xs font-bold text-slate-400">{t('admin.kpiExpenses') || (lang === 'ar' ? 'إجمالي المصروفات' : 'All Expenses')}</span>
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20">
+                <TrendingDown size={18} />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
-              {(platformStats?.totalVolume || totalExpenses).toLocaleString('en-US')}
+            <p className="text-2xl sm:text-3xl font-extrabold text-red-400 tracking-tight" dir="ltr">
+              {(platformStats?.totalExpenseVolume || totalExpenses).toLocaleString('en-US')}
             </p>
-            <div className="flex items-center gap-1 mt-2 text-[11px] text-emerald-400 font-semibold">
-              <span>MRU (Ouguiya)</span>
-              {platformStats?.totalTransactions > 0 && (
+            <div className="flex items-center gap-1 mt-2 text-[11px] text-red-400 font-semibold flex-wrap">
+              <span>MRU</span>
+              {platformStats?.totalExpenseTransactions > 0 && (
                 <span className="text-slate-500 text-[10px] ml-1">
-                  • {platformStats.totalTransactions} transactions
+                  • {platformStats.totalExpenseTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Card 3: Resolution Rate */}
+          {/* Card 3: Registered Income (All Platform Income) */}
+          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-400">{t('admin.kpiIncome') || (lang === 'ar' ? 'إجمالي الدخل' : 'All Income')}</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                <TrendingUp size={18} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight" dir="ltr">
+              {(platformStats?.totalIncomeVolume || totalIncome).toLocaleString('en-US')}
+            </p>
+            <div className="flex items-center gap-1 mt-2 text-[11px] text-emerald-400 font-semibold flex-wrap">
+              <span>MRU</span>
+              {platformStats?.totalIncomeTransactions > 0 && (
+                <span className="text-slate-500 text-[10px] ml-1">
+                  • {platformStats.totalIncomeTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Card 4: Tracked Volume (Global Total Tracked Volume) */}
+          <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-purple-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-400">{t('admin.kpiVolume')}</span>
+              <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                <Zap size={18} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" dir="ltr">
+              {(platformStats?.totalVolume || (totalExpenses + totalIncome)).toLocaleString('en-US')}
+            </p>
+            <div className="flex items-center gap-1 mt-2 text-[11px] text-purple-400 font-semibold flex-wrap">
+              <span>MRU (Ouguiya)</span>
+              {platformStats?.totalTransactions > 0 && (
+                <span className="text-slate-500 text-[10px] ml-1">
+                  • {platformStats.totalTransactions} {lang === 'ar' ? 'عملية' : 'tx'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Card 5: Resolution Rate */}
           <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-teal-500/40 transition-all">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400">{t('admin.resolutionRate')}</span>
@@ -342,7 +385,7 @@ export default function AdminScreen() {
             </div>
           </div>
 
-          {/* Card 4: Community Rating */}
+          {/* Card 6: Community Rating */}
           <div className="p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400">{t('admin.kpiRating')}</span>
