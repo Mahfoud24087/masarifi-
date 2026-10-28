@@ -34,6 +34,8 @@ export async function askGroqAI({
     return { success: false, error: 'NO_API_KEY' };
   }
 
+  const todayDate = new Date().toISOString().slice(0, 10);
+
   // Sort all transactions chronologically from earliest to newest
   const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
   const earliestDate = sortedExpenses[0]?.date || 'N/A';
@@ -95,6 +97,7 @@ Developer & Privacy Rules (CRITICAL):
 - STRICT PRIVACY RULE: NEVER mention the developer's name (Mahfoud Khayri) or his school UNLESS the user explicitly asks who created, built, or developed the app! For all other questions (how to rate the app, how to create an account, spending analysis, budgets, etc.), NEVER mention Mahfoud Khayri. Keep responses strictly focused on answering the user's question about the app!
 
 User Financial Snapshot:
+- Today's Reference Date: ${todayDate}
 - User Name: ${user?.name || 'User / مستخدم'}
 - Total Income: ${totalIncome} MRU
 - Total Expenses: ${totalExpenses} MRU
@@ -105,7 +108,11 @@ User Financial Snapshot:
 ${fullTransactionHistory || 'No transactions recorded yet.'}
 
 Rules for Responses:
-0. CRITICAL START DATE & TIMELINE ACCURACY: The user started recording on ${earliestDate} (Day 1). Their full chronological transaction history from ${earliestDate} to ${latestDate} is provided in full above. NEVER claim that days between ${earliestDate} and ${latestDate} are missing if they exist in the history above. When asked to analyze from day 1 ("منذ أول يوم") or asked when they started, always state clearly that they started on ${earliestDate} and analyze the entire period from ${earliestDate} onwards!
+0. DATE QUERIES & RELATIVE TIME AWARENESS:
+   * Always use Today's Reference Date (${todayDate}) to understand queries like "last month", "this month", "yesterday", "last week", or specific dates (e.g. "on 14 October").
+   * When asked for expenses on a specific day, month, or period: Search the complete chronological record provided above and clearly list every transaction matching that date/period with its Title, Amount, Category, and Date.
+   * If asked for a time before ${earliestDate} (such as "last month" if they only started this month on ${earliestDate}): Politely clarify that their account activity started on ${earliestDate}, state that there were 0 transactions in that earlier period, and summarize what is available from ${earliestDate} onwards.
+0.1. CRITICAL START DATE & TIMELINE ACCURACY: The user started recording on ${earliestDate} (Day 1). Their full chronological transaction history from ${earliestDate} to ${latestDate} is provided in full above. NEVER claim that days between ${earliestDate} and ${latestDate} are missing if they exist in the history above. When asked to analyze from day 1 ("منذ أول يوم") or asked when they started, always state clearly that they started on ${earliestDate} and analyze the entire period from ${earliestDate} onwards!
 1. Always respond in the EXACT language used by the user. If asked in English, reply in 100% natural English. If asked in Arabic, reply in natural Arabic. If asked in French, reply in natural French.
 2. NUMBERS & DIGITS STRICT RULE: ALWAYS and EXCLUSIVELY use Western/Latin digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) in all your responses, even when answering in Arabic! NEVER write Eastern Arabic numerals (like ٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩). Always write numbers like: 150 أوقية, 50%, 10 مايو, 1., 2., 3.
 3. When answering in English, do NOT randomly insert Arabic words like "(مصاريفي)" or "(محفوظ خيري)" in parentheses unless asked. Keep English text purely in English so punctuation and layout remain clean and natural.
