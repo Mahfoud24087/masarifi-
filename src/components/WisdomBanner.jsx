@@ -50,14 +50,22 @@ const WISDOM_ITEMS = [
   },
 ];
 
-export default function WisdomBanner() {
+export default function WisdomBanner({ forceShow = false }) {
   const { user, isDark, isRTL, lang } = useMasarifi();
   const [index, setIndex] = useState(0);
 
-  // STRICT RULE: This update is visible ONLY for user account "Anonyme".
-  // All other users will not see or feel anything.
+  // Auto-rotate wisdom every 7 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % WISDOM_ITEMS.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // When forceShow is true (e.g. Landing Page), show to all visitors.
+  // When inside the app, show only for user account "Anonyme".
   const isAnonyme = user?.name?.trim().toLowerCase() === 'anonyme';
-  if (!isAnonyme) return null;
+  if (!forceShow && !isAnonyme) return null;
 
   const currentItem = WISDOM_ITEMS[index];
   const IconComponent = currentItem.icon;
@@ -75,10 +83,10 @@ export default function WisdomBanner() {
 
   return (
     <div
-      className={`rounded-3xl border p-4 mb-4 transition-all shadow-sm relative overflow-hidden ${
+      className={`rounded-3xl border p-4 mb-4 transition-all shadow-sm relative overflow-hidden text-start ${
         isDark
-          ? 'bg-slate-800/80 border-slate-700/80 text-white'
-          : 'bg-white border-slate-200/90 text-slate-900 shadow-sm'
+          ? 'bg-slate-800/90 border-slate-700/80 text-white'
+          : 'bg-white/95 border-emerald-100 text-slate-900 shadow-md shadow-emerald-500/5'
       }`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >

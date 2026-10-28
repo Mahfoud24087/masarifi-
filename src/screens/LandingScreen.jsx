@@ -4,6 +4,7 @@ import { useMasarifi } from '../context/MasarifiContext';
 import InstallPrompt from '../components/InstallPrompt';
 import AboutModal from '../components/AboutModal';
 import DeveloperContactBar from '../components/DeveloperContactBar';
+import WisdomBanner from '../components/WisdomBanner';
 
 const LANGS = [
   { code: 'ar', label: 'العربية', flag: '🇲🇷' },
@@ -144,7 +145,11 @@ export default function LandingScreen() {
       </div>
 
       {/* Hero */}
-      <div className="px-6 pt-8 pb-8 text-center">
+      <div className="px-6 pt-4 pb-8 text-center max-w-lg mx-auto">
+        {/* Top Financial Wisdom Carousel */}
+        <div className="mb-4">
+          <WisdomBanner forceShow={true} />
+        </div>
         <div
           className="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-emerald-950/40"
           style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
