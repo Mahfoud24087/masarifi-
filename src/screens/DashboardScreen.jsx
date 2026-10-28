@@ -3,6 +3,7 @@ import { useMasarifi } from '../context/MasarifiContext';
 import CategoryBadge from '../components/CategoryBadge';
 import EmptyState from '../components/EmptyState';
 import BankLauncherWidget from '../components/BankLauncherWidget';
+import WisdomBanner from '../components/WisdomBanner';
 import { EXPENSE_CATEGORIES, getCategoryById } from '../models/categories';
 import { ChevronDown, ChevronLeft, ChevronRight, Search, X, TrendingUp, TrendingDown, Minus, RefreshCw, Sparkles } from 'lucide-react';
 import AIAdvisorModal from '../components/AIAdvisorModal';
@@ -241,6 +242,9 @@ export default function DashboardScreen() {
           <StatPill label={t('dashboard.largest')} value={`${fmt(largestExpense)} ${t('common.currency')}`} isDark={isDark} />
           <StatPill label={t('dashboard.totalTx')} value={expenses.length.toString()} isDark={isDark} />
         </div>
+
+        {/* Motivational Wisdom Card (Exclusive to Anonyme) */}
+        <WisdomBanner />
 
         {/* Bankily / Masrvi / Sedad Fast Launcher Widget (Beta: only visible for Anonyme) */}
         <BankLauncherWidget />
