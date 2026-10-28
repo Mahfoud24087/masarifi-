@@ -96,17 +96,6 @@ export default function AdminScreen() {
   // Sorted & Filtered users by activity (most transactions first)
   const sortedAndFilteredUsers = useMemo(() => {
     let list = [...allUsersList];
-    // Sort primarily by expenseCount (most active first), then by creation date
-    list.sort((a, b) => {
-      const countA = (a.expenseCount || 0) + (a.incomeCount || 0);
-      const countB = (b.expenseCount || 0) + (b.incomeCount || 0);
-      if (countB !== countA) return countB - countA;
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    });
-
-    if (userSearch.trim()) {
-      list = list.filter(u => u.name?.toLowerCase().includes(userSearch.toLowerCase()));
-    }
 
     // Filter by transaction type
     if (userTxFilter === 'expenses') {
@@ -115,15 +104,38 @@ export default function AdminScreen() {
       list = list.filter(u => (u.incomeCount || 0) > 0);
     }
 
+    if (userSearch.trim()) {
+      list = list.filter(u => u.name?.toLowerCase().includes(userSearch.toLowerCase()));
+    }
+
+    // Sort appropriately based on active transaction filter:
+    list.sort((a, b) => {
+      if (userTxFilter === 'income') {
+        const totalB = b.incomeTotal || 0;
+        const totalA = a.incomeTotal || 0;
+        if (totalB !== totalA) return totalB - totalA;
+        return (b.incomeCount || 0) - (a.incomeCount || 0);
+      } else if (userTxFilter === 'expenses') {
+        const totalB = b.expenseTotal || 0;
+        const totalA = a.expenseTotal || 0;
+        if (totalB !== totalA) return totalB - totalA;
+        return (b.expenseCount || 0) - (a.expenseCount || 0);
+      } else {
+        const countA = (a.expenseCount || 0) + (a.incomeCount || 0);
+        const countB = (b.expenseCount || 0) + (b.incomeCount || 0);
+        if (countB !== countA) return countB - countA;
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+    });
+
     return list;
   }, [allUsersList, userSearch, userTxFilter]);
 
-  // Top Most Active User (Leader)
+  // Top User Highlight (Dynamic based on filter)
   const topActiveUser = useMemo(() => {
-    if (!allUsersList || allUsersList.length === 0) return null;
-    const sorted = [...allUsersList].sort((a, b) => (b.expenseCount || 0) - (a.expenseCount || 0));
-    return sorted[0]?.expenseCount > 0 ? sorted[0] : (sorted[0] || null);
-  }, [allUsersList]);
+    if (!sortedAndFilteredUsers || sortedAndFilteredUsers.length === 0) return null;
+    return sortedAndFilteredUsers[0];
+  }, [sortedAndFilteredUsers]);
 
   // Pagination calculations
   const totalUserPages = Math.ceil(sortedAndFilteredUsers.length / USERS_PER_PAGE) || 1;
@@ -835,13 +847,13 @@ export default function AdminScreen() {
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
                           <Flame size={13} className="text-amber-400" />
-                          {lang === 'ar' ? 'المستخدم الأكثر نشاطاً في التطبيق' : 'Most Active User'}
+                          {userTxFilter === 'income' ? (lang === 'ar' ? 'المستخدم الأعلى دخلاً مسجلاً' : 'Top Income Earner') : (lang === 'ar' ? 'المستخدم الأكثر نشاطاً في التطبيق' : 'Most Active User')}
                         </span>
                       </div>
                       <h4 className={`text-lg font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         <span>{topActiveUser.name}</span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                          #1 Leader
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/30">
+                          {userTxFilter === 'income' ? '#1 Income' : '#1 Leader'}
                         </span>
                       </h4>
                       <p className="text-xs text-slate-400 mt-0.5" dir="ltr">
@@ -856,9 +868,9 @@ export default function AdminScreen() {
                     isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-amber-200/80 shadow-sm'
                   }`}>
                     <div className="text-right">
-                      <p className="text-xs text-slate-400">{lang === 'ar' ? 'إجمالي العمليات' : 'Total Transactions'}</p>
+                      <p className="text-xs text-slate-400">{userTxFilter === 'income' ? (lang === 'ar' ? 'إجمالي الدخل' : 'Total Income') : (lang === 'ar' ? 'إجمالي العمليات' : 'Total Transactions')}</p>
                       <p className="text-lg font-black text-emerald-400" dir="ltr">
-                        {topActiveUser.expenseCount || 0} <span className="text-xs font-normal text-slate-400">tx</span>
+                        {userTxFilter === 'income' ? `${(topActiveUser.incomeTotal || 0).toLocaleString()} MRU` : `${topActiveUser.expenseCount || 0} tx`}
                       </p>
                     </div>
                     <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">

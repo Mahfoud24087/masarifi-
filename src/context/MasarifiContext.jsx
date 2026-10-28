@@ -1392,90 +1392,88 @@ export function MasarifiProvider({ children }) {
     if (!isSupabaseConfigured || !supabase) return;
     async function fetchAllProfiles() {
       try {
-        // 1. If current user is admin, fetch rich user stats & platform volume via secure RPC
-        if (currentUser?.role === 'admin' || currentUser?.name?.toLowerCase() === 'admin') {
-          // Fetch users with transaction counts
-          const { data: rpcUsers, error: rpcErr } = await supabase.rpc('admin_get_all_users', {
-            p_admin_id: currentUser.id,
-          });
-          if (!rpcErr && rpcUsers && rpcUsers.length > 0) {
-            setAllUsersList(
-              rpcUsers.map((u) => ({
-                id: u.id,
-                name: u.name,
-                role: u.role,
-                createdAt: u.created_at,
-                expenseCount: Number(u.expense_count) || 0,
-                incomeCount: Number(u.income_count) || 0,
-                expenseTotal: Number(u.expense_total) || 0,
-                incomeTotal: Number(u.income_total) || 0,
-              }))
-            );
-          }
+        // 1. Fetch public profiles view
+        let profiles = null;
+        const { data: pubData, error: pubErr } = await supabase
+          .from('public_profiles')
+          .select('id, name, created_at');
 
-          // Fetch global platform tracked volume split by expenses and income
-          const { data: expData, error: expErr } = await supabase
-            .from('expenses')
-            .select('type, amount')
-            .neq('category', '__support_ticket__');
+        if (!pubErr && pubData && pubData.length > 0) {
+          profiles = pubData;
+        } else {
+          const { data: fallbackData } = await supabase
+            .from('profiles')
+            .select('id, name, created_at');
+          profiles = fallbackData || [];
+        }
 
-          if (!expErr && expData) {
-            let expCount = 0, expTotal = 0, incCount = 0, incTotal = 0;
-            expData.forEach((e) => {
-              const amt = Number(e.amount) || 0;
-              if (e.type === 'income') {
-                incCount++;
-                incTotal += amt;
-              } else {
-                expCount++;
-                expTotal += amt;
-              }
-            });
-            setPlatformStats({
-              totalVolume: expTotal + incTotal,
-              totalTransactions: expCount + incCount,
-              totalExpenseVolume: expTotal,
-              totalExpenseTransactions: expCount,
-              totalIncomeVolume: incTotal,
-              totalIncomeTransactions: incCount,
-            });
-          } else {
-            // Fallback to RPC
-            const { data: statsData } = await supabase.rpc('admin_get_platform_stats', {
-              p_admin_id: currentUser.id,
-            });
-            if (statsData && statsData.length > 0) {
-              setPlatformStats((prev) => ({
-                ...prev,
-                totalVolume: Number(statsData[0].total_volume) || 0,
-                totalTransactions: Number(statsData[0].total_transactions) || 0,
-              }));
+        // 2. Fetch all expenses and incomes with user_id to compute exact per-user stats
+        const { data: expData, error: expErr } = await supabase
+          .from('expenses')
+          .select('user_id, type, amount')
+          .neq('category', '__support_ticket__');
+
+        let expCount = 0, expTotal = 0, incCount = 0, incTotal = 0;
+        const userStatsMap = {};
+
+        if (!expErr && expData) {
+          expData.forEach((e) => {
+            const amt = Number(e.amount) || 0;
+            if (e.type === 'income') {
+              incCount++;
+              incTotal += amt;
+            } else {
+              expCount++;
+              expTotal += amt;
             }
-          }
-          return;
+
+            if (e.user_id) {
+              if (!userStatsMap[e.user_id]) {
+                userStatsMap[e.user_id] = { expCount: 0, expTotal: 0, incCount: 0, incTotal: 0 };
+              }
+              if (e.type === 'income') {
+                userStatsMap[e.user_id].incCount++;
+                userStatsMap[e.user_id].incTotal += amt;
+              } else {
+                userStatsMap[e.user_id].expCount++;
+                userStatsMap[e.user_id].expTotal += amt;
+              }
+            }
+          });
+
+          setPlatformStats({
+            totalVolume: expTotal + incTotal,
+            totalTransactions: expCount + incCount,
+            totalExpenseVolume: expTotal,
+            totalExpenseTransactions: expCount,
+            totalIncomeVolume: incTotal,
+            totalIncomeTransactions: incCount,
+          });
         }
 
-        // 2. Query the hardened public_profiles view (excludes sensitive passwords)
-        const { data, error } = await supabase.from('public_profiles').select('id, name, created_at');
-        if (data && data.length > 0) {
-          const mapped = data.map((p) => ({
-            id: p.id,
-            name: p.name,
-            createdAt: p.created_at,
-            expenseCount: 0,
-          }));
+        // 3. Map user list with accurate expense and income counts & totals
+        if (profiles && profiles.length > 0) {
+          const mapped = profiles.map((p) => {
+            const s = userStatsMap[p.id] || { expCount: 0, expTotal: 0, incCount: 0, incTotal: 0 };
+            return {
+              id: p.id,
+              name: p.name,
+              role: p.name?.toLowerCase() === 'admin' ? 'admin' : 'user',
+              createdAt: p.created_at,
+              expenseCount: s.expCount,
+              expenseTotal: s.expTotal,
+              incomeCount: s.incCount,
+              incomeTotal: s.incTotal,
+            };
+          });
           setAllUsersList(mapped);
-        } else if (error) {
-          // Fallback to profiles if public_profiles view not yet created
-          const { data: fallbackData } = await supabase.from('profiles').select('id, name, created_at');
-          if (fallbackData && fallbackData.length > 0) {
-            setAllUsersList(fallbackData.map(p => ({ id: p.id, name: p.name, createdAt: p.created_at, expenseCount: 0 })));
-          }
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to fetch platform profiles or transactions:', err);
+      }
     }
     fetchAllProfiles();
-  }, [currentUser]);
+  }, [currentUser, isAdminLoggedIn, screen]);
 
   const value = {
     lang, setLang, t, isRTL,
