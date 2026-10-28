@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ملصق مصاريفي - Masarifi Poster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 15px;
+      min-height: 100vh;
+    }
+
+    /* Print toolbar at top */
+    .toolbar {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .print-btn {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      transition: transform 0.15s ease;
+    }
+    .print-btn:hover {
+      transform: scale(1.02);
+    }
+
+    /* The Flyer / Poster Container */
+    .poster {
+      width: 100%;
+      max-width: 440px;
+      background: white;
+      border-radius: 28px;
+      padding: 36px 28px;
+      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.12);
+      border: 2px solid #e2e8f0;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative top header bar */
+    .poster::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      background: linear-gradient(90deg, #059669, #10b981, #34d399);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ecfdf5;
+      color: #047857;
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      border: 1px solid #a7f3d0;
+    }
+
+    .hook-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+
+    .hook-title span {
+      color: #059669;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* QR Code Card Frame */
+    .qr-frame {
+      background: #f8fafc;
+      border: 3px dashed #cbd5e1;
+      border-radius: 24px;
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .qr-frame img {
+      width: 220px;
+      height: 220px;
+      display: block;
+      border-radius: 16px;
+      background: white;
+      padding: 8px;
+    }
+
+    .qr-scan-badge {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+      text-align: right;
+    }
+
+    .feat-item {
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #f1f5f9;
+    }
+
+    .feat-item span.icon {
+      font-size: 16px;
+    }
+
+    /* Supported Banks strip */
+    .banks-strip {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .banks-tags {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .bank-pill {
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #334155;
+    }
+
+    .url-tag {
+      margin-top: 16px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #059669;
+      direction: ltr;
+      display: block;
+    }
+
+    /* Print styling rules */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .toolbar {
+        display: none !important;
+      }
+      .poster {
+        border: none;
+        box-shadow: none;
+        padding: 20px;
+        max-width: 100%;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Print Action Bar -->
+  <div class="toolbar">
+    <span style="font-size: 14px; font-weight: 700; color: #334155;">🖨️ جاهز للطباعة فوراً</span>
+    <button class="print-btn" onclick="window.print()">طباعة الملصق (Print)</button>
+  </div>
+
+  <!-- The Poster / Flyer -->
+  <div class="poster">
+    <div class="badge">🇲🇷 تطبيق موريتاني 100%</div>
+    
+    <h1 class="hook-title">
+      وين مشا راتبك في<br>
+      <span>بنكيلي ومصرفي؟</span> 💸
+    </h1>
+
+    <p class="subtitle">
+      تحكّم في مصاريفك اليومية بالذكاء الاصطناعي،<br>
+      واحفظ كل أوقية تملكها بدون عناء!
+    </p>
+
+    <!-- QR Code Block -->
+    <div class="qr-frame">
+      <img src="/masarifi_qr_code.png" alt="QR Code Masarifi" onerror="this.src='masarifi_qr_code.png'">
+      <div class="qr-scan-badge">
+        <span>📸 امسح الكود بكاميرا هاتفك</span>
+      </div>
+    </div>
+
+    <!-- Feature Grid -->
+    <div class="features">
+      <div class="feat-item">
+        <span class="icon">⚡</span>
+        <span>بدون تحميل (يفتح بثانيتين)</span>
+      </div>
+      <div class="feat-item">
+        <span class="icon">🤖</span>
+        <span>مستشار مالي ذكي 24/7</span>
+      </div>
+      <div class="feat-item">
+        <span class="icon">📊</span>
+        <span>تتبع الديون والميزانية</span>
+      </div>
+      <div class="feat-item">
+        <span class="icon">🔒</span>
+        <span>مجاني وخاص 100%</span>
+      </div>
+    </div>
+
+    <!-- Banks Footnote -->
+    <div class="banks-strip">
+      <span>متوافق مع جميع البنوك والمحافظ:</span>
+      <div class="banks-tags">
+        <span class="bank-pill">Bankily بنكيلي</span>
+        <span class="bank-pill">Masrvi مصرفي</span>
+        <span class="bank-pill">Sedad السداد</span>
+        <span class="bank-pill">Click كليك</span>
+      </div>
+      <span class="url-tag">masarifi-nine.vercel.app</span>
+    </div>
+  </div>
+
+</body>
+</html>
