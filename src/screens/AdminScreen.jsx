@@ -870,7 +870,7 @@ export default function AdminScreen() {
                     <div className="text-right">
                       <p className="text-xs text-slate-400">{userTxFilter === 'income' ? (lang === 'ar' ? 'إجمالي الدخل' : 'Total Income') : (lang === 'ar' ? 'إجمالي العمليات' : 'Total Transactions')}</p>
                       <p className="text-lg font-black text-emerald-400" dir="ltr">
-                        {userTxFilter === 'income' ? `${(topActiveUser.incomeTotal || 0).toLocaleString()} MRU` : `${topActiveUser.expenseCount || 0} tx`}
+                        {userTxFilter === 'income' ? `${topActiveUser.incomeCount || 0} tx` : `${topActiveUser.expenseCount || 0} tx`}
                       </p>
                     </div>
                     <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
@@ -1240,7 +1240,7 @@ export default function AdminScreen() {
             {/* Close button */}
             <button
               onClick={() => setSelectedUserDetail(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800 transition-colors"
+              className={`absolute top-5 right-5 p-1 rounded-xl transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'}`}
             >
               ✕
             </button>
@@ -1284,11 +1284,10 @@ export default function AdminScreen() {
                 <span className="text-[11px] text-slate-500 block mt-0.5">
                   {lang === 'ar' ? 'عملية مصروف' : 'transactions'}
                 </span>
-                {selectedUserDetail.expenseTotal > 0 && (
-                  <span className="text-xs font-bold text-red-300 mt-1 block" dir="ltr">
-                    {selectedUserDetail.expenseTotal.toLocaleString()} MRU
-                  </span>
-                )}
+                <div className="mt-2 pt-1.5 border-t border-red-500/20 flex items-center gap-1.5 text-[11px] font-bold text-red-400/90">
+                  <Lock size={11} className="shrink-0" />
+                  <span>{lang === 'ar' ? 'المبلغ: ***** (خاص)' : 'Amount: ***** (Private)'}</span>
+                </div>
               </div>
 
               <div className={`p-4 rounded-2xl border ${
@@ -1304,11 +1303,10 @@ export default function AdminScreen() {
                 <span className="text-[11px] text-slate-500 block mt-0.5">
                   {lang === 'ar' ? 'عملية دخل' : 'transactions'}
                 </span>
-                {selectedUserDetail.incomeTotal > 0 && (
-                  <span className="text-xs font-bold text-emerald-300 mt-1 block" dir="ltr">
-                    {selectedUserDetail.incomeTotal.toLocaleString()} MRU
-                  </span>
-                )}
+                <div className="mt-2 pt-1.5 border-t border-emerald-500/20 flex items-center gap-1.5 text-[11px] font-bold text-emerald-400/90">
+                  <Lock size={11} className="shrink-0" />
+                  <span>{lang === 'ar' ? 'المبلغ: ***** (خاص)' : 'Amount: ***** (Private)'}</span>
+                </div>
               </div>
             </div>
 
@@ -1318,7 +1316,7 @@ export default function AdminScreen() {
                 <span className="text-xs text-slate-400 block mb-1">
                   {lang === 'ar' ? 'إجمالي المعاملات' : 'Total Transactions'}
                 </span>
-                <span className="text-2xl font-black text-white" dir="ltr">
+                <span className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`} dir="ltr">
                   {(selectedUserDetail.expenseCount || 0) + (selectedUserDetail.incomeCount || 0) || selectedUserDetail.expenseCount || 0}
                 </span>
                 <span className="text-[11px] text-slate-500 block mt-0.5">
@@ -1330,7 +1328,7 @@ export default function AdminScreen() {
                 <span className="text-xs text-slate-400 block mb-1">
                   {lang === 'ar' ? 'تاريخ الانضمام' : 'Join Date'}
                 </span>
-                <span className="text-sm font-bold text-slate-200 block mt-1" dir="ltr">
+                <span className={`text-sm font-bold block mt-1 ${isDark ? 'text-slate-200' : 'text-slate-800'}`} dir="ltr">
                   {new Date(selectedUserDetail.createdAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'fr-FR', {
                     day: 'numeric', month: 'short', year: 'numeric'
                   })}
